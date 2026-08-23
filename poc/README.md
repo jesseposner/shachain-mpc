@@ -68,8 +68,8 @@ cross-region topology.
   once.
 - Channel open runs as a jointly garbled BMR circuit (no cut-and-choose;
   the garbling is itself a maliciously secure MPC) whose masked outputs
-  hand the frontier to the field engine, demonstrating the BMR-to-Rep3
-  handoff. The garbling still happens in-session, though: MP-SPDZ has no
+  hand the frontier to the field engine. That handoff is the BMR-to-Rep3
+  re-sharing that results/bmr-notes.md had listed as an open question. The garbling still happens in-session, though: MP-SPDZ has no
   way to persist a garbled package to disk, so the three-round online
   phase only pays off over a WAN once that persistence exists or the
   session is started ahead of the seed. `--cold-start field` falls back to
