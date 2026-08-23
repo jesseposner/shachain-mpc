@@ -12,8 +12,10 @@ SHA-256), which puts the 48-edge channel-open cold start at ~77,000 sequential
 rounds on the network critical path. BMR moves the depth-dependent work into
 garbling, which is input-independent: it can run before the channel, or the
 seed, exists. What remains online is a
-constant three communication rounds (measured; input-label exchange plus
-output handling) and local evaluation.
+constant number of communication rounds (measured; input-label exchange plus
+output handling) and local evaluation: three when garbling and evaluation
+share one process, as in the `-O` table below, and two when a stockpiled
+package is evaluated in a fresh process (see below).
 
 ## Measurements (3 parties, loopback, malicious unless noted)
 
@@ -31,9 +33,10 @@ chain.
 
 ## Findings
 
-1. With pre-garbled circuits, channel open costs three round trips plus
-   ~0.5 s of local compute, against ~77,000 sequential rounds for Rep3. Over
-   any real network this is the difference between sub-second and minutes.
+1. With pre-garbled circuits, channel open costs two round trips (three if
+   garbling and evaluation share a process) plus ~0.5 s of local compute,
+   against ~77,000 sequential rounds for Rep3. Over any real network this is
+   the difference between sub-second and minutes.
 2. The garbling price is ~34 MB per edge per party (malicious; 100 MB global),
    so a 48-edge cold-start package is ~1.6 GB per party. That is affordable as
    a per-channel one-off but rules out garbling deep lookahead buffers;
@@ -52,7 +55,7 @@ chain.
 - Steady state: Rep3 in the background with a lookahead buffer; B2A and scalar
   opening on the hot path (~5 ms, 31 rounds).
 - Channel open: pre-garbled 48-edge BMR package per expected channel,
-  evaluated in three round trips at open time; the package is consumed once
+  evaluated in two online rounds at open time; the package is consumed once
   and its storage freed.
 - Quorum change: same pattern as channel open, since RESTORE from the seed is
   also a bounded chain of edges (at most 48).

@@ -28,13 +28,13 @@ spawns four member agents on localhost and runs:
 
 ```
 == setup: dealing RSS summands member-to-member
-== pre-garbled channel-open package stockpiled      33 s, before the seed is used
+== pre-garbled channel-open package stockpiled      23 s, before the seed is used
 == channel open via stockpiled garbled package      1.7 s
-== steady state: 6 updates                          0.3-5 s each
+== steady state: 6 updates                          0.4-5 s each
 == crash: all volatile masks destroyed; member 2 offline
-== quorum change to [0, 1, 3] + RESTORE             92 hashes, 17.4 s
+== quorum change to [0, 1, 3] + RESTORE             92 hashes, 19 s
 == continuing: 3 updates with the new quorum
-== distributed PoC complete in 47 s: LDK accepted every point and secret
+== distributed PoC complete in 62 s: LDK accepted every point and secret
 ```
 
 The RESTORE rebuilds the frontier from the seed summands alone and
@@ -70,8 +70,12 @@ cross-region topology.
 - Channel open runs as a jointly garbled BMR circuit (no cut-and-choose;
   the garbling is itself a maliciously secure MPC) whose masked outputs
   hand the frontier to the field engine. That handoff is the BMR-to-Rep3
-  re-sharing that results/bmr-notes.md had listed as an open question. The garbling still happens in-session, though: MP-SPDZ has no
-  way to persist a garbled package to disk, so the three-round online
-  phase only pays off over a WAN once that persistence exists or the
-  session is started ahead of the seed. `--cold-start field` falls back to
-  the replicated MPC.
+  re-sharing that results/bmr-notes.md had listed as an open question. The
+  package is garbled and stockpiled before the seed exists, then evaluated
+  at open in two online rounds; `--cold-start bmr` garbles in-session
+  instead, and `--cold-start field` falls back to the replicated MPC.
+- A garbled package must be evaluated exactly once, since evaluating one
+  circuit on two different inputs leaks. The member deletes its package
+  after use, but nothing in the runtime enforces that, and a stored package
+  should be integrity-bound to the channel and quorum that will consume it.
+  Both belong to the same authorization layer as `release_leaf`.

@@ -29,10 +29,11 @@ with some single party.
 2. **Cost in Iceberg's own trust model.** For t=2 (quorum of 3, one
    corruption), maliciously secure replicated MPC computes one shachain edge
    in ~55 ms and 0.4 MB per party on loopback; batched across 1,000 channels
-   it amortizes to ~1.25 ms and ~40 KB per edge including the scalar-validity
-   check and the Boolean-to-Z_q conversion (`results/<host>-<date>.md`). For
-   t=3 (quorum of 5, two corruptions), malicious Shamir gives the same round
-   structure at ~10x the bandwidth (`results/shamir-t3.md`).
+   it amortizes to ~1.25 ms and ~125 KB per edge including the scalar-validity
+   check and the Boolean-to-Z_q conversion, or ~0.5 ms and ~41 KB without them
+   (`results/<host>-<date>.md`). For t=3 (quorum of 5, two corruptions),
+   malicious Shamir gives the same round structure at ~10x the bandwidth
+   (`results/shamir-t3.md`).
 
 3. **Rounds, not compute, are the constraint.** One edge is ~1,600 sequential
    communication rounds, the AND-depth of the SHA-256 circuit. Over a network

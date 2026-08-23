@@ -52,11 +52,18 @@ means the only port that has to be open between regions is UDP 51820.
 ## Running it
 
 ```sh
-sh wan/prepare-aws.sh        # done already: key pairs, security groups, AMIs
+sh wan/prepare-aws.sh        # key pairs, security groups, AMIs (free)
 sh wan/launch-instances.sh   # THE ONE THAT COSTS MONEY (~$0.29/hr x 4)
 sh wan/run-wan.sh            # bootstrap, latency matrix, benchmarks, lifecycle
 sh wan/teardown.sh           # terminate everything and remove the staging
 ```
+
+`launch-instances.sh` is resumable: it leaves members that already have a
+live instance alone, so re-running after a partial failure launches only what
+is missing. A region the account has not used before answers `RunInstances`
+with `PendingVerification` while AWS validates it, which `--dry-run` does not
+predict and which cleared within minutes for us; the script retries those
+regions rather than giving up.
 
 `run-wan.sh` opens UDP 51820 between the node IPs, builds the WireGuard mesh,
 bootstraps all four nodes in parallel (~20 min, dominated by the MP-SPDZ
