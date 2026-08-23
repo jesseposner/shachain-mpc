@@ -79,6 +79,16 @@ Reading:
   before the channel exists. Steady state stays on Rep3; BMR covers channel
   open and quorum changes.
 
+## End-to-end proof of concept
+
+`poc/driver.py` runs the whole design as one lifecycle: RSS seed for a 2-of-4
+group, 48-edge cold start, per-update frontier advance with masked volatile
+state, point publication with replicated cross-checks, revocation into a live
+LDK counterparty, then a crash, a quorum change to the standby member, and
+RESTORE from the seed summands, after which the channel continues
+byte-identically (pending pre-crash revocations included). See
+[poc/README.md](poc/README.md).
+
 ## Layout
 
 ```
@@ -86,6 +96,7 @@ programs/shachain_step.mpc   the MPC program (K sequential edges, N parallel cha
 scripts/setup.sh             clone, patch and build MP-SPDZ (macOS tested)
 scripts/test.sh              correctness against the plaintext reference, all protocols
 scripts/bench.sh             benchmark table -> results/<host>-<date>.md
+poc/driver.py                end-to-end lifecycle PoC (see poc/README.md)
 scripts/ldk_check.sh         MPC secrets -> LDK verifier; point-export harness
 scripts/point_export.py      replicated shares -> published P = s*G with cross-checks
 scripts/ref.py               plaintext BOLT #3 reference (selftest = official vectors)

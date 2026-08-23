@@ -73,11 +73,13 @@ def main():
     mpspdz = args[0]
     expected = int(args[1]) if len(args) > 1 else None
 
-    # Each party reads only its own file: [cal_c1, cal_c2, s_c1, s_c2].
+    # Each party reads only its own file: [cal_c1, cal_c2, then one component
+    # pair per exported scalar].
     raw = [read_shares(f'{mpspdz}/Persistence/Transactions-P{i}.data')
            for i in range(3)]
-    for r in raw:
-        assert len(r) == 4, f'expected 4 field elements, got {len(r)}'
+    n = len(raw[0])
+    assert n >= 4 and n % 2 == 0, f'unexpected element count {n}'
+    assert all(len(r) == n for r in raw)
 
     # Calibration: the constant 1 was written first. Summing one component
     # per summand across parties gives 1 * R (mod q), revealing the Montgomery
@@ -87,30 +89,28 @@ def main():
     assert R == 2**256 % Q, 'Montgomery factor is not 2^256'
     Rinv = pow(R, -1, Q)
 
-    # The scalar's shares, de-Montgomeryised locally by each party.
-    shares = [((r[2] * Rinv) % Q, (r[3] * Rinv) % Q) for r in raw]
-
-    if corrupt:
-        # Party 1 tampers with its copy of a replicated component.
-        shares[1] = ((shares[1][0] + 1) % Q, shares[1][1])
-
-    # Party step: publish one point per component.
-    t0 = time.time()
-    published = [(ec_mul(c1), ec_mul(c2)) for c1, c2 in shares]
-    per_party = (time.time() - t0) / 3
-
-    # Combiner step: cross-check each replicated pair by POINT equality
-    # (party i first component vs party i+1 second component), then sum the
-    # three summand points.
-    for i in range(3):
-        j = (i + 1) % 3
-        assert published[i][0] == published[j][1], \
-            f'replicated point mismatch between P{i} and P{j}: corruption'
-    t1 = time.time()
-    P = None
-    for i in range(3):
-        P = ec_add(P, published[i][0])
-    combine = time.time() - t1
+    n_scalars = n // 2 - 1
+    results = []
+    t_pts = 0.0
+    for k in range(n_scalars):
+        shares = [((r[2 + 2 * k] * Rinv) % Q, (r[3 + 2 * k] * Rinv) % Q)
+                  for r in raw]
+        if corrupt:
+            shares[1] = ((shares[1][0] + 1) % Q, shares[1][1])
+        t0 = time.time()
+        published = [(ec_mul(c1), ec_mul(c2)) for c1, c2 in shares]
+        t_pts += time.time() - t0
+        for i in range(3):
+            j = (i + 1) % 3
+            assert published[i][0] == published[j][1], \
+                f'replicated point mismatch between P{i} and P{j}: corruption'
+        P = None
+        for i in range(3):
+            P = ec_add(P, published[i][0])
+        results.append((P, sum(sh[0] for sh in shares) % Q))
+    per_party = t_pts / 3 / n_scalars
+    combine = 0.0
+    P, s_sum = results[0]
 
     print(f'P.x = {P[0]:064x}')
     print(f'P.y = {P[1]:064x}')
@@ -120,9 +120,32 @@ def main():
 
     if expected is not None:
         assert P == ec_mul(expected), 'P != expected*G'
-        s = sum(sh[0] for sh in shares) % Q
-        assert s == expected % Q, 'reconstructed scalar mismatch'
+        assert s_sum == expected % Q, 'reconstructed scalar mismatch'
         print('PASS: P == s*G and replicated cross-checks hold')
+
+
+def combine_points(mpspdz):
+    """Library entry: return the list of exported points as (x, y) tuples,
+    running the replicated cross-checks. Raises on corruption."""
+    raw = [read_shares(f'{mpspdz}/Persistence/Transactions-P{i}.data')
+           for i in range(3)]
+    n = len(raw[0])
+    R = sum(r[0] for r in raw) % Q
+    assert R == 2**256 % Q, 'Montgomery factor is not 2^256'
+    Rinv = pow(R, -1, Q)
+    points = []
+    for k in range(n // 2 - 1):
+        shares = [((r[2 + 2 * k] * Rinv) % Q, (r[3 + 2 * k] * Rinv) % Q)
+                  for r in raw]
+        published = [(ec_mul(c1), ec_mul(c2)) for c1, c2 in shares]
+        for i in range(3):
+            j = (i + 1) % 3
+            assert published[i][0] == published[j][1], 'replicated mismatch'
+        P = None
+        for i in range(3):
+            P = ec_add(P, published[i][0])
+        points.append(P)
+    return points
 
 
 if __name__ == '__main__':
