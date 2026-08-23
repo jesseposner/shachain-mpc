@@ -1,17 +1,5 @@
-== setup: dealing RSS summands member-to-member
-Traceback (most recent call last):
-  File "/home/ubuntu/shachain-mpc/poc/coordinator.py", line 385, in <module>
-    main()
-  File "/home/ubuntu/shachain-mpc/poc/coordinator.py", line 334, in main
-    coord.pregarble_cold_start()
-  File "/home/ubuntu/shachain-mpc/poc/coordinator.py", line 191, in pregarble_cold_start
-    self.run_step(plan, spec, mode='garble', precompiled=precompiled)
-  File "/home/ubuntu/shachain-mpc/poc/coordinator.py", line 157, in run_step
-    raise RuntimeError('; '.join(errors))
-RuntimeError: slot 0: timed out; slot 1: http://10.99.0.2:9001/step: Using statistical security parameter 40
-Fatal error in communication: read_some: stream truncated [asio.ssl.stream:1]
-This is probably because party 0 encountered a problem.
-; slot 2: http://10.99.0.3:9001/step: Using statistical security parameter 40
-Fatal error in communication: read_some: stream truncated [asio.ssl.stream:1]
-This is probably because party 0 encountered a problem.
-
+usage: coordinator.py [-h] [--local] [--members MEMBERS]
+                      [--mpc-hosts MPC_HOSTS] [--updates UPDATES]
+                      [--after AFTER] [--mpspdz MPSPDZ]
+                      [--cold-start {package,bmr,field}]
+coordinator.py: error: unrecognized arguments: --skip-crash

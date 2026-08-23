@@ -1,6 +1,7 @@
 === bootstrap member 0 on ip-172-31-4-67 ===
 mp-spdz-clang21 already applied or does not apply cleanly; continuing
 mp-spdz-bmr-phase-timing already applied or does not apply cleanly; continuing
+g++ -o Machines/replicated-bin-party.o Machines/replicated-bin-party.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 g++ -o Processor/BaseMachine.o Processor/BaseMachine.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 g++ -o Processor/DataPositions.o Processor/DataPositions.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 g++ -o Processor/ExternalClients.o Processor/ExternalClients.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
@@ -65,7 +66,6 @@ g++ -o Networking/ServerSocket.o Networking/ServerSocket.cpp -DNO_AVX_OT -I./loc
 g++ -o Networking/sockets.o Networking/sockets.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 g++ -o GC/square64.o GC/square64.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 g++ -o GC/Instruction.o GC/Instruction.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
-g++ -o Machines/replicated-bin-party.o Machines/replicated-bin-party.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 g++ -o Machines/malicious-rep-bin-party.o Machines/malicious-rep-bin-party.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 g++ -o Machines/replicated-field-party.o Machines/replicated-field-party.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 g++ -o Machines/malicious-rep-field-party.o Machines/malicious-rep-field-party.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
@@ -73,54 +73,8 @@ g++ -o Machines/BMR/rep-bmr-party.o Machines/BMR/rep-bmr-party.cpp -DNO_AVX_OT -
 g++ -o BMR/AndJob.o BMR/AndJob.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 g++ -o BMR/CommonParty.o BMR/CommonParty.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 g++ -o BMR/GarbledGate.o BMR/GarbledGate.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
-In file included from ./Protocols/ReplicatedInput.hpp:12,
-                 from ./Protocols/ShamirInput.hpp:11,
-                 from ./Protocols/fake-stuff.hpp:12,
-                 from ./BMR/RealProgramParty.hpp:24,
-                 from Machines/BMR/rep-bmr-party.cpp:6:
-./Processor/Input.hpp: In instantiation of ‘T InputBase<T>::finalize(int, int) [with T = Rep3Share<gf2n_long>]’:
-./BMR/RealProgramParty.hpp:136:37:   required from ‘RealProgramParty<T>::RealProgramParty(int, const char**) [with T = Rep3Share<gf2n_long>]’
-Machines/BMR/rep-bmr-party.cpp:11:54:   required from here
-./Processor/Input.hpp:216:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  216 | T InputBase<T>::finalize(int player, int n_bits)
-      |   ^~~~~~~~~~~~
-In file included from ./Protocols/Rep3Share2k.h:9,
-                 from ./Protocols/Replicated.hpp:18,
-                 from ./Protocols/Beaver.hpp:11,
-                 from ./Machines/Rep.hpp:14,
-                 from Machines/BMR/rep-bmr-party.cpp:7:
-./Protocols/Rep3Share.h: In instantiation of ‘RepShare<T, L> RepShare<T, L>::operator*(const U&) const [with U = int; T = gf2n_long; int L = 2]’:
-./BMR/RealGarbleWire.hpp:60:28:   required from ‘void GarbleJob<T>::middle_round(RealProgramParty<T>&, Protocol&) [with T = Rep3Share<gf2n_long>; Protocol = Replicated<Rep3Share<gf2n_long> >]’
-./BMR/RealProgramParty.hpp:243:20:   required from ‘void RealProgramParty<T>::garble() [with T = Rep3Share<gf2n_long>]’
-./BMR/RealProgramParty.hpp:168:3:   required from ‘RealProgramParty<T>::RealProgramParty(int, const char**) [with T = Rep3Share<gf2n_long>]’
-Machines/BMR/rep-bmr-party.cpp:11:54:   required from here
-./Protocols/Rep3Share.h:58:14: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-   58 |     RepShare operator*(const U& other) const
-      |              ^~~~~~~~
-In file included from ./Protocols/Replicated.h:19,
-                 from ./Protocols/Beaver.h:13,
-                 from ./Protocols/SemiShare.h:9,
-                 from ./Protocols/Share.h:12,
-                 from ./BMR/SpdzWire.h:9,
-                 from ./BMR/Party.h:13,
-                 from ./BMR/RealProgramParty.h:9,
-                 from ./BMR/RealProgramParty.hpp:6:
-./Math/FixedVec.h: In instantiation of ‘FixedVec<T, L> FixedVec<T, L>::operator+(const FixedVec<T, L>&) const [with T = gf2n_long; int L = 2]’:
-./BMR/RealGarbleWire.hpp:60:17:   required from ‘void GarbleJob<T>::middle_round(RealProgramParty<T>&, Protocol&) [with T = Rep3Share<gf2n_long>; Protocol = Replicated<Rep3Share<gf2n_long> >]’
-./BMR/RealProgramParty.hpp:243:20:   required from ‘void RealProgramParty<T>::garble() [with T = Rep3Share<gf2n_long>]’
-./BMR/RealProgramParty.hpp:168:3:   required from ‘RealProgramParty<T>::RealProgramParty(int, const char**) [with T = Rep3Share<gf2n_long>]’
-Machines/BMR/rep-bmr-party.cpp:11:54:   required from here
-./Math/FixedVec.h:170:19: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  170 |     FixedVec<T, L>operator+(const FixedVec<T, L>& other) const
-      |                   ^~~~~~~~
-./Protocols/Rep3Share.h: In instantiation of ‘static Rep3Share<T> Rep3Share<T>::constant(T, int, typename super::mac_key_type) [with T = gf2n_long; typename super::mac_key_type = GC::NoValue; super = RepShare<gf2n_long, 2>]’:
-./BMR/RealGarbleWire.hpp:61:22:   required from ‘void GarbleJob<T>::middle_round(RealProgramParty<T>&, Protocol&) [with T = Rep3Share<gf2n_long>; Protocol = Replicated<Rep3Share<gf2n_long> >]’
-./BMR/RealProgramParty.hpp:243:20:   required from ‘void RealProgramParty<T>::garble() [with T = Rep3Share<gf2n_long>]’
-./BMR/RealProgramParty.hpp:168:3:   required from ‘RealProgramParty<T>::RealProgramParty(int, const char**) [with T = Rep3Share<gf2n_long>]’
-Machines/BMR/rep-bmr-party.cpp:11:54:   required from here
-./Protocols/Rep3Share.h:160:22: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  160 |     static Rep3Share constant(T value, int my_num,
-      |                      ^~~~~~~~
+g++ -o BMR/Key.o BMR/Key.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
+g++ -o BMR/Party.o BMR/Party.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 In file included from ./Protocols/Rep3Share2k.h:9,
                  from ./Protocols/Replicated.hpp:18,
                  from ./Processor/OnlineMachine.hpp:15,
@@ -181,16 +135,18 @@ Machines/replicated-field-party.cpp:12:53:   required from here
 ./Protocols/Rep3Share.h:58:14: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    58 |     RepShare operator*(const U& other) const
       |              ^~~~~~~~
-g++ -o BMR/Key.o BMR/Key.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
-./Protocols/Rep3Share.h: In instantiation of ‘RepShare<T, L> RepShare<T, L>::operator*=(const U&) [with U = int; T = gf2n_long; int L = 2]’:
-./Protocols/Rep3Share.h:61:13:   required from ‘RepShare<T, L> RepShare<T, L>::operator*(const U&) const [with U = int; T = gf2n_long; int L = 2]’
-./BMR/RealGarbleWire.hpp:60:28:   required from ‘void GarbleJob<T>::middle_round(RealProgramParty<T>&, Protocol&) [with T = Rep3Share<gf2n_long>; Protocol = Replicated<Rep3Share<gf2n_long> >]’
-./BMR/RealProgramParty.hpp:243:20:   required from ‘void RealProgramParty<T>::garble() [with T = Rep3Share<gf2n_long>]’
-./BMR/RealProgramParty.hpp:168:3:   required from ‘RealProgramParty<T>::RealProgramParty(int, const char**) [with T = Rep3Share<gf2n_long>]’
+In file included from ./Protocols/ReplicatedInput.hpp:12,
+                 from ./Protocols/ShamirInput.hpp:11,
+                 from ./Protocols/fake-stuff.hpp:12,
+                 from ./BMR/RealProgramParty.hpp:24,
+                 from Machines/BMR/rep-bmr-party.cpp:6:
+./Processor/Input.hpp: In instantiation of ‘T InputBase<T>::finalize(int, int) [with T = Rep3Share<gf2n_long>]’:
+./BMR/RealProgramParty.hpp:136:37:   required from ‘RealProgramParty<T>::RealProgramParty(int, const char**) [with T = Rep3Share<gf2n_long>]’
 Machines/BMR/rep-bmr-party.cpp:11:54:   required from here
-./Protocols/Rep3Share.h:66:14: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-   66 |     RepShare operator*=(const U& other)
-      |              ^~~~~~~~
+./Processor/Input.hpp:216:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  216 | T InputBase<T>::finalize(int player, int n_bits)
+      |   ^~~~~~~~~~~~
+g++ -o BMR/Register.o BMR/Register.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 In file included from ./Processor/Online-Thread.hpp:15,
                  from ./Processor/Machine.hpp:7,
                  from ./Machines/Rep.hpp:12,
@@ -211,17 +167,58 @@ Machines/replicated-field-party.cpp:12:53:   required from here
 ./Processor/Input.hpp:216:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   216 | T InputBase<T>::finalize(int player, int n_bits)
       |   ^~~~~~~~~~~~
-./Math/FixedVec.h: In instantiation of ‘FixedVec<T, L> FixedVec<T, L>::operator<<(int) const [with T = gf2n_long; int L = 2]’:
-./BMR/Register.hpp:189:35:   required from ‘static void EvalRegister::load(std::vector<GC::ReadAccess<T> >&, const GC::Memory<U>&) [with T = GC::Secret<EvalRegister>; U = Rep3Share<gf2n_long>]’
-./GC/Secret.hpp:176:12:   required from ‘static void GC::Secret<T>::load(std::vector<GC::ReadAccess<V> >&, const U&) [with U = GC::Memory<Rep3Share<gf2n_long> >; V = GC::Secret<EvalRegister>; T = EvalRegister]’
-./GC/Processor.hpp:148:12:   required from ‘void GC::Processor<T>::load_dynamic_direct(const ArgVector&, U&) [with U = GC::Memory<Rep3Share<gf2n_long> >; T = GC::Secret<EvalRegister>; ArgVector = std::vector<unsigned int>]’
-./GC/Program.hpp:145:9:   required from ‘GC::BreakType GC::Program::execute_with_errors(GC::Processor<T>&, U&, int) const [with T = GC::Secret<EvalRegister>; U = GC::Memory<Rep3Share<gf2n_long> >]’
-./GC/Program.hpp:91:35:   required from ‘GC::BreakType GC::Program::execute(GC::Processor<T>&, U&, int) const [with T = GC::Secret<EvalRegister>; U = GC::Memory<Rep3Share<gf2n_long> >]’
-./BMR/CommonParty.hpp:58:25:   required from ‘GC::BreakType CommonParty::second_phase(GC::Program&, GC::Processor<T>&, GC::Machine<T>&, U&) [with T = GC::Secret<EvalRegister>; U = GC::Memory<Rep3Share<gf2n_long> >]’
-./BMR/RealProgramParty.hpp:190:30:   required from ‘RealProgramParty<T>::RealProgramParty(int, const char**) [with T = Rep3Share<gf2n_long>]’
+In file included from ./Protocols/Rep3Share2k.h:9,
+                 from ./Protocols/Replicated.hpp:18,
+                 from ./Protocols/Beaver.hpp:11,
+                 from ./Machines/Rep.hpp:14,
+                 from Machines/BMR/rep-bmr-party.cpp:7:
+./Protocols/Rep3Share.h: In instantiation of ‘RepShare<T, L> RepShare<T, L>::operator*(const U&) const [with U = int; T = gf2n_long; int L = 2]’:
+./BMR/RealGarbleWire.hpp:60:28:   required from ‘void GarbleJob<T>::middle_round(RealProgramParty<T>&, Protocol&) [with T = Rep3Share<gf2n_long>; Protocol = Replicated<Rep3Share<gf2n_long> >]’
+./BMR/RealProgramParty.hpp:243:20:   required from ‘void RealProgramParty<T>::garble() [with T = Rep3Share<gf2n_long>]’
+./BMR/RealProgramParty.hpp:168:3:   required from ‘RealProgramParty<T>::RealProgramParty(int, const char**) [with T = Rep3Share<gf2n_long>]’
 Machines/BMR/rep-bmr-party.cpp:11:54:   required from here
-./Math/FixedVec.h:270:20: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  270 |     FixedVec<T, L> operator<<(int i) const
+./Protocols/Rep3Share.h:58:14: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+   58 |     RepShare operator*(const U& other) const
+      |              ^~~~~~~~
+In file included from ./Protocols/Replicated.h:19,
+                 from ./Protocols/Beaver.h:13,
+                 from ./Protocols/SemiShare.h:9,
+                 from ./Protocols/Share.h:12,
+                 from ./BMR/SpdzWire.h:9,
+                 from ./BMR/Party.h:13,
+                 from ./BMR/RealProgramParty.h:9,
+                 from ./BMR/RealProgramParty.hpp:6:
+./Math/FixedVec.h: In instantiation of ‘FixedVec<T, L> FixedVec<T, L>::operator+(const FixedVec<T, L>&) const [with T = gf2n_long; int L = 2]’:
+./BMR/RealGarbleWire.hpp:60:17:   required from ‘void GarbleJob<T>::middle_round(RealProgramParty<T>&, Protocol&) [with T = Rep3Share<gf2n_long>; Protocol = Replicated<Rep3Share<gf2n_long> >]’
+./BMR/RealProgramParty.hpp:243:20:   required from ‘void RealProgramParty<T>::garble() [with T = Rep3Share<gf2n_long>]’
+./BMR/RealProgramParty.hpp:168:3:   required from ‘RealProgramParty<T>::RealProgramParty(int, const char**) [with T = Rep3Share<gf2n_long>]’
+Machines/BMR/rep-bmr-party.cpp:11:54:   required from here
+./Math/FixedVec.h:170:19: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  170 |     FixedVec<T, L>operator+(const FixedVec<T, L>& other) const
+      |                   ^~~~~~~~
+./Protocols/Rep3Share.h: In instantiation of ‘static Rep3Share<T> Rep3Share<T>::constant(T, int, typename super::mac_key_type) [with T = gf2n_long; typename super::mac_key_type = GC::NoValue; super = RepShare<gf2n_long, 2>]’:
+./BMR/RealGarbleWire.hpp:61:22:   required from ‘void GarbleJob<T>::middle_round(RealProgramParty<T>&, Protocol&) [with T = Rep3Share<gf2n_long>; Protocol = Replicated<Rep3Share<gf2n_long> >]’
+./BMR/RealProgramParty.hpp:243:20:   required from ‘void RealProgramParty<T>::garble() [with T = Rep3Share<gf2n_long>]’
+./BMR/RealProgramParty.hpp:168:3:   required from ‘RealProgramParty<T>::RealProgramParty(int, const char**) [with T = Rep3Share<gf2n_long>]’
+Machines/BMR/rep-bmr-party.cpp:11:54:   required from here
+./Protocols/Rep3Share.h:160:22: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  160 |     static Rep3Share constant(T value, int my_num,
+      |                      ^~~~~~~~
+./Math/FixedVec.h: In instantiation of ‘FixedVec<T, L> FixedVec<T, L>::operator>>(int) const [with T = gf2n_long; int L = 2]’:
+./Protocols/Rep3Share.h:111:27:   required from ‘static void RepShare<T, L>::shrsi(SubProcessor<U>&, const Instruction&, std::false_type) [with U = Rep3Share<gf2n_long>; T = gf2n_long; int L = 2; std::false_type = std::integral_constant<bool, false>]’
+./Protocols/Rep3Share.h:93:14:   required from ‘static void RepShare<T, L>::shrsi(SubProcessor<U>&, const Instruction&) [with U = Rep3Share<gf2n_long>; T = gf2n_long; int L = 2]’
+./Processor/Instruction.hpp:1163:21:   required from ‘void Instruction::execute(Processor<sint, sgf2n>&) const [with sint = Rep3Share<gfp_<0, 1> >; sgf2n = Rep3Share<gf2n_long>]’
+./Processor/Instruction.hpp:1577:30:   required from ‘void Program::execute_with_errors(Processor<sint, sgf2n>&) const [with sint = Rep3Share<gfp_<0, 1> >; sgf2n = Rep3Share<gf2n_long>]’
+./Processor/Instruction.hpp:1496:24:   required from ‘void Program::execute(Processor<sint, sgf2n>&) const [with sint = Rep3Share<gfp_<0, 1> >; sgf2n = Rep3Share<gf2n_long>]’
+./Processor/Online-Thread.hpp:289:33:   [ skipping 5 instantiation contexts, use -ftemplate-backtrace-limit=0 to disable ]
+./Processor/OnlineMachine.hpp:192:68:   required from ‘int OnlineMachine::run_with_error() [with T = Rep3Share<gfp_<0, 1> >; U = Rep3Share<gf2n_long>]’
+./Processor/OnlineMachine.hpp:170:36:   required from ‘int OnlineMachine::run() [with T = Rep3Share<gfp_<0, 1> >; U = Rep3Share<gf2n_long>]’
+./Processor/FieldMachine.hpp:50:5:   required from ‘FieldMachine<U, V, W, X>::FieldMachine(int, const char**, ez::ezOptionParser&, OnlineOptions&, int) [with U = Rep3Share; V = Rep3Share; W = HonestMajorityMachine; X = gf2n_long]’
+./Processor/FieldMachine.hpp:28:5:   required from ‘HonestMajorityFieldMachine<U, V>::HonestMajorityFieldMachine(int, const char**, ez::ezOptionParser&, int) [with U = Rep3Share; V = HonestMajorityMachine]’
+./Processor/FieldMachine.hpp:20:5:   required from ‘HonestMajorityFieldMachine<U, V>::HonestMajorityFieldMachine(int, const char**) [with U = Rep3Share; V = HonestMajorityMachine]’
+Machines/replicated-field-party.cpp:12:53:   required from here
+./Math/FixedVec.h:278:20: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  278 |     FixedVec<T, L> operator>>(int i) const
       |                    ^~~~~~~~
 In file included from ./Protocols/MaliciousRep3Share.h:9,
                  from Machines/malicious-rep-field-party.cpp:6:
@@ -274,27 +271,83 @@ Machines/malicious-rep-field-party.cpp:14:62:   required from here
 ./Protocols/Rep3Share.h:58:14: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    58 |     RepShare operator*(const U& other) const
       |              ^~~~~~~~
-./Math/FixedVec.h: In instantiation of ‘FixedVec<T, L> FixedVec<T, L>::operator>>(int) const [with T = gf2n_long; int L = 2]’:
-./Protocols/Rep3Share.h:111:27:   required from ‘static void RepShare<T, L>::shrsi(SubProcessor<U>&, const Instruction&, std::false_type) [with U = Rep3Share<gf2n_long>; T = gf2n_long; int L = 2; std::false_type = std::integral_constant<bool, false>]’
-./Protocols/Rep3Share.h:93:14:   required from ‘static void RepShare<T, L>::shrsi(SubProcessor<U>&, const Instruction&) [with U = Rep3Share<gf2n_long>; T = gf2n_long; int L = 2]’
-./Processor/Instruction.hpp:1163:21:   required from ‘void Instruction::execute(Processor<sint, sgf2n>&) const [with sint = Rep3Share<gfp_<0, 1> >; sgf2n = Rep3Share<gf2n_long>]’
-./Processor/Instruction.hpp:1577:30:   required from ‘void Program::execute_with_errors(Processor<sint, sgf2n>&) const [with sint = Rep3Share<gfp_<0, 1> >; sgf2n = Rep3Share<gf2n_long>]’
-./Processor/Instruction.hpp:1496:24:   required from ‘void Program::execute(Processor<sint, sgf2n>&) const [with sint = Rep3Share<gfp_<0, 1> >; sgf2n = Rep3Share<gf2n_long>]’
-./Processor/Online-Thread.hpp:289:33:   [ skipping 5 instantiation contexts, use -ftemplate-backtrace-limit=0 to disable ]
-./Processor/OnlineMachine.hpp:192:68:   required from ‘int OnlineMachine::run_with_error() [with T = Rep3Share<gfp_<0, 1> >; U = Rep3Share<gf2n_long>]’
-./Processor/OnlineMachine.hpp:170:36:   required from ‘int OnlineMachine::run() [with T = Rep3Share<gfp_<0, 1> >; U = Rep3Share<gf2n_long>]’
-./Processor/FieldMachine.hpp:50:5:   required from ‘FieldMachine<U, V, W, X>::FieldMachine(int, const char**, ez::ezOptionParser&, OnlineOptions&, int) [with U = Rep3Share; V = Rep3Share; W = HonestMajorityMachine; X = gf2n_long]’
-./Processor/FieldMachine.hpp:28:5:   required from ‘HonestMajorityFieldMachine<U, V>::HonestMajorityFieldMachine(int, const char**, ez::ezOptionParser&, int) [with U = Rep3Share; V = HonestMajorityMachine]’
-./Processor/FieldMachine.hpp:20:5:   required from ‘HonestMajorityFieldMachine<U, V>::HonestMajorityFieldMachine(int, const char**) [with U = Rep3Share; V = HonestMajorityMachine]’
-Machines/replicated-field-party.cpp:12:53:   required from here
-./Math/FixedVec.h:278:20: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  278 |     FixedVec<T, L> operator>>(int i) const
-      |                    ^~~~~~~~
+./Protocols/Rep3Share.h: In instantiation of ‘RepShare<T, L> RepShare<T, L>::operator*=(const U&) [with U = int; T = gf2n_long; int L = 2]’:
+./Protocols/Rep3Share.h:61:13:   required from ‘RepShare<T, L> RepShare<T, L>::operator*(const U&) const [with U = int; T = gf2n_long; int L = 2]’
+./BMR/RealGarbleWire.hpp:60:28:   required from ‘void GarbleJob<T>::middle_round(RealProgramParty<T>&, Protocol&) [with T = Rep3Share<gf2n_long>; Protocol = Replicated<Rep3Share<gf2n_long> >]’
+./BMR/RealProgramParty.hpp:243:20:   required from ‘void RealProgramParty<T>::garble() [with T = Rep3Share<gf2n_long>]’
+./BMR/RealProgramParty.hpp:168:3:   required from ‘RealProgramParty<T>::RealProgramParty(int, const char**) [with T = Rep3Share<gf2n_long>]’
+Machines/BMR/rep-bmr-party.cpp:11:54:   required from here
+./Protocols/Rep3Share.h:66:14: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+   66 |     RepShare operator*=(const U& other)
+      |              ^~~~~~~~
+In file included from ./Protocols/ShamirInput.hpp:11,
+                 from ./Protocols/fake-stuff.hpp:12,
+                 from ./Processor/Machine.hpp:9:
 ./Protocols/ReplicatedInput.hpp: In instantiation of ‘T PrepLessInput<T>::finalize_mine() [with T = Rep3Share<gf2n_long>]’:
 ./Protocols/ReplicatedInput.hpp:208:3:   required from here
 ./Protocols/ReplicatedInput.hpp:208:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   208 | T PrepLessInput<T>::finalize_mine()
       |   ^~~~~~~~~~~~~~~~
+./Math/FixedVec.h: In instantiation of ‘FixedVec<T, L> FixedVec<T, L>::operator<<(int) const [with T = gf2n_long; int L = 2]’:
+./BMR/Register.hpp:189:35:   required from ‘static void EvalRegister::load(std::vector<GC::ReadAccess<T> >&, const GC::Memory<U>&) [with T = GC::Secret<EvalRegister>; U = Rep3Share<gf2n_long>]’
+./GC/Secret.hpp:176:12:   required from ‘static void GC::Secret<T>::load(std::vector<GC::ReadAccess<V> >&, const U&) [with U = GC::Memory<Rep3Share<gf2n_long> >; V = GC::Secret<EvalRegister>; T = EvalRegister]’
+./GC/Processor.hpp:148:12:   required from ‘void GC::Processor<T>::load_dynamic_direct(const ArgVector&, U&) [with U = GC::Memory<Rep3Share<gf2n_long> >; T = GC::Secret<EvalRegister>; ArgVector = std::vector<unsigned int>]’
+./GC/Program.hpp:145:9:   required from ‘GC::BreakType GC::Program::execute_with_errors(GC::Processor<T>&, U&, int) const [with T = GC::Secret<EvalRegister>; U = GC::Memory<Rep3Share<gf2n_long> >]’
+./GC/Program.hpp:91:35:   required from ‘GC::BreakType GC::Program::execute(GC::Processor<T>&, U&, int) const [with T = GC::Secret<EvalRegister>; U = GC::Memory<Rep3Share<gf2n_long> >]’
+./BMR/CommonParty.hpp:58:25:   required from ‘GC::BreakType CommonParty::second_phase(GC::Program&, GC::Processor<T>&, GC::Machine<T>&, U&) [with T = GC::Secret<EvalRegister>; U = GC::Memory<Rep3Share<gf2n_long> >]’
+./BMR/RealProgramParty.hpp:190:30:   required from ‘RealProgramParty<T>::RealProgramParty(int, const char**) [with T = Rep3Share<gf2n_long>]’
+Machines/BMR/rep-bmr-party.cpp:11:54:   required from here
+./Math/FixedVec.h:270:20: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  270 |     FixedVec<T, L> operator<<(int i) const
+      |                    ^~~~~~~~
+./Protocols/Replicated.hpp: In instantiation of ‘FixedVec<T, 2> ReplicatedBase::get_random() [with T = gf2n_long]’:
+./Protocols/Replicated.hpp:374:61:   required from ‘T Replicated<T>::get_random() [with T = Rep3Share<gf2n_long>]’
+./Protocols/Replicated.hpp:372:3:   required from here
+./Protocols/Replicated.hpp:378:16: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  378 | FixedVec<T, 2> ReplicatedBase::get_random()
+      |                ^~~~~~~~~~~~~~
+In file included from ./GC/ShareThread.hpp:15,
+                 from ./Protocols/ReplicatedPrep.hpp:21,
+                 from ./Processor/OnlineMachine.hpp:16:
+./Processor/Data_Files.hpp: In instantiation of ‘T Preprocessing<T>::get_random_from_inputs(int) [with T = Rep3Share<gf2n_long>]’:
+./Processor/Data_Files.h:477:10:   required from ‘T Preprocessing<T>::get_random_no_count() [with T = Rep3Share<gf2n_long>]’
+./Processor/Data_Files.h:474:3:   required from here
+./Processor/Data_Files.hpp:47:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+   47 | T Preprocessing<T>::get_random_from_inputs(int nplayers)
+      |   ^~~~~~~~~~~~~~~~
+./Math/FixedVec.h: In instantiation of ‘FixedVec<T, L> FixedVec<T, L>::operator/(const FixedVec<T, L>&) const [with T = gf2n_long; int L = 2]’:
+./Protocols/ReplicatedPrep.hpp:327:63:   required from ‘void BufferPrep<T>::buffer_inverses(std::true_type) [with int <anonymous> = 0; T = Rep3Share<gf2n_long>; std::true_type = std::integral_constant<bool, true>]’
+./Protocols/ReplicatedPrep.hpp:301:23:   required from ‘void BufferPrep<T>::buffer_inverses() [with T = Rep3Share<gf2n_long>]’
+./Protocols/ReplicatedPrep.hpp:299:6:   required from here
+./Math/FixedVec.h:191:19: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  191 |     FixedVec<T, L>operator/(const FixedVec<T, L>& other) const
+      |                   ^~~~~~~~
+g++ -o BMR/TrustedParty.o BMR/TrustedParty.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
+./Protocols/ReplicatedInput.hpp: In instantiation of ‘T PrepLessInput<T>::finalize_mine() [with T = Rep3Share<gf2n_long>]’:
+./Protocols/ReplicatedInput.hpp:208:3:   required from here
+./Protocols/ReplicatedInput.hpp:208:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  208 | T PrepLessInput<T>::finalize_mine()
+      |   ^~~~~~~~~~~~~~~~
+In file included from ./Processor/Online-Thread.hpp:15,
+                 from ./Processor/Machine.hpp:7,
+                 from ./Machines/Rep.hpp:12,
+                 from Machines/malicious-rep-field-party.cpp:8:
+./Processor/Input.hpp: In instantiation of ‘T InputBase<T>::finalize(int, int) [with T = MaliciousRep3Share<gf2n_long>]’:
+./Processor/Input.hpp:195:48:   required from ‘void InputBase<T>::raw_input(SubProcessor<T>&, const ArgVector&, int) [with T = MaliciousRep3Share<gf2n_long>; ArgVector = std::vector<unsigned int>]’
+./Processor/Instruction.hpp:1137:35:   required from ‘void Instruction::execute(Processor<sint, sgf2n>&) const [with sint = MaliciousRep3Share<gfp_<0, 1> >; sgf2n = MaliciousRep3Share<gf2n_long>]’
+./Processor/Instruction.hpp:1577:30:   required from ‘void Program::execute_with_errors(Processor<sint, sgf2n>&) const [with sint = MaliciousRep3Share<gfp_<0, 1> >; sgf2n = MaliciousRep3Share<gf2n_long>]’
+./Processor/Instruction.hpp:1496:24:   required from ‘void Program::execute(Processor<sint, sgf2n>&) const [with sint = MaliciousRep3Share<gfp_<0, 1> >; sgf2n = MaliciousRep3Share<gf2n_long>]’
+./Processor/Online-Thread.hpp:289:33:   required from ‘void thread_info<sint, sgf2n>::Sub_Main_Func() [with sint = MaliciousRep3Share<gfp_<0, 1> >; sgf2n = MaliciousRep3Share<gf2n_long>]’
+./Processor/Online-Thread.hpp:449:21:   [ skipping 4 instantiation contexts, use -ftemplate-backtrace-limit=0 to disable ]
+./Processor/OnlineMachine.hpp:192:68:   required from ‘int OnlineMachine::run_with_error() [with T = MaliciousRep3Share<gfp_<0, 1> >; U = MaliciousRep3Share<gf2n_long>]’
+./Processor/OnlineMachine.hpp:170:36:   required from ‘int OnlineMachine::run() [with T = MaliciousRep3Share<gfp_<0, 1> >; U = MaliciousRep3Share<gf2n_long>]’
+./Processor/FieldMachine.hpp:50:5:   required from ‘FieldMachine<U, V, W, X>::FieldMachine(int, const char**, ez::ezOptionParser&, OnlineOptions&, int) [with U = MaliciousRep3Share; V = MaliciousRep3Share; W = HonestMajorityMachine; X = gf2n_long]’
+./Processor/FieldMachine.hpp:28:5:   required from ‘HonestMajorityFieldMachine<U, V>::HonestMajorityFieldMachine(int, const char**, ez::ezOptionParser&, int) [with U = MaliciousRep3Share; V = HonestMajorityMachine]’
+./Processor/FieldMachine.hpp:20:5:   required from ‘HonestMajorityFieldMachine<U, V>::HonestMajorityFieldMachine(int, const char**) [with U = MaliciousRep3Share; V = HonestMajorityMachine]’
+Machines/malicious-rep-field-party.cpp:14:62:   required from here
+./Processor/Input.hpp:216:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  216 | T InputBase<T>::finalize(int player, int n_bits)
+      |   ^~~~~~~~~~~~
 ./Protocols/Replicated.hpp: In instantiation of ‘FixedVec<T, 2> ReplicatedBase::get_random() [with T = gf2n_long]’:
 ./Protocols/Replicated.hpp:374:61:   required from ‘T Replicated<T>::get_random() [with T = Rep3Share<gf2n_long>]’
 ./Protocols/Replicated.hpp:372:3:   required from here
@@ -351,45 +404,26 @@ In file included from ./Protocols/edabit.h:9,
 ./Math/FixedVec.h:216:19: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   216 |     FixedVec<T, L>operator&(const U& other) const
       |                   ^~~~~~~~
-In file included from ./Protocols/ShamirInput.hpp:11,
-                 from ./Protocols/fake-stuff.hpp:12,
-                 from ./Processor/Machine.hpp:9:
-./Protocols/ReplicatedInput.hpp: In instantiation of ‘T PrepLessInput<T>::finalize_mine() [with T = Rep3Share<gf2n_long>]’:
-./Protocols/ReplicatedInput.hpp:208:3:   required from here
-./Protocols/ReplicatedInput.hpp:208:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  208 | T PrepLessInput<T>::finalize_mine()
-      |   ^~~~~~~~~~~~~~~~
-In file included from ./Processor/Online-Thread.hpp:15,
-                 from ./Processor/Machine.hpp:7,
-                 from ./Machines/Rep.hpp:12,
-                 from Machines/malicious-rep-field-party.cpp:8:
-./Processor/Input.hpp: In instantiation of ‘T InputBase<T>::finalize(int, int) [with T = MaliciousRep3Share<gf2n_long>]’:
-./Processor/Input.hpp:195:48:   required from ‘void InputBase<T>::raw_input(SubProcessor<T>&, const ArgVector&, int) [with T = MaliciousRep3Share<gf2n_long>; ArgVector = std::vector<unsigned int>]’
-./Processor/Instruction.hpp:1137:35:   required from ‘void Instruction::execute(Processor<sint, sgf2n>&) const [with sint = MaliciousRep3Share<gfp_<0, 1> >; sgf2n = MaliciousRep3Share<gf2n_long>]’
+./Math/FixedVec.h: In instantiation of ‘FixedVec<T, L> FixedVec<T, L>::operator>>(int) const [with T = gf2n_long; int L = 2]’:
+./Protocols/Rep3Share.h:111:27:   required from ‘static void RepShare<T, L>::shrsi(SubProcessor<U>&, const Instruction&, std::false_type) [with U = MaliciousRep3Share<gf2n_long>; T = gf2n_long; int L = 2; std::false_type = std::integral_constant<bool, false>]’
+./Protocols/Rep3Share.h:93:14:   required from ‘static void RepShare<T, L>::shrsi(SubProcessor<U>&, const Instruction&) [with U = MaliciousRep3Share<gf2n_long>; T = gf2n_long; int L = 2]’
+./Processor/Instruction.hpp:1163:21:   required from ‘void Instruction::execute(Processor<sint, sgf2n>&) const [with sint = MaliciousRep3Share<gfp_<0, 1> >; sgf2n = MaliciousRep3Share<gf2n_long>]’
 ./Processor/Instruction.hpp:1577:30:   required from ‘void Program::execute_with_errors(Processor<sint, sgf2n>&) const [with sint = MaliciousRep3Share<gfp_<0, 1> >; sgf2n = MaliciousRep3Share<gf2n_long>]’
 ./Processor/Instruction.hpp:1496:24:   required from ‘void Program::execute(Processor<sint, sgf2n>&) const [with sint = MaliciousRep3Share<gfp_<0, 1> >; sgf2n = MaliciousRep3Share<gf2n_long>]’
-./Processor/Online-Thread.hpp:289:33:   required from ‘void thread_info<sint, sgf2n>::Sub_Main_Func() [with sint = MaliciousRep3Share<gfp_<0, 1> >; sgf2n = MaliciousRep3Share<gf2n_long>]’
-./Processor/Online-Thread.hpp:449:21:   [ skipping 4 instantiation contexts, use -ftemplate-backtrace-limit=0 to disable ]
+./Processor/Online-Thread.hpp:289:33:   [ skipping 5 instantiation contexts, use -ftemplate-backtrace-limit=0 to disable ]
 ./Processor/OnlineMachine.hpp:192:68:   required from ‘int OnlineMachine::run_with_error() [with T = MaliciousRep3Share<gfp_<0, 1> >; U = MaliciousRep3Share<gf2n_long>]’
 ./Processor/OnlineMachine.hpp:170:36:   required from ‘int OnlineMachine::run() [with T = MaliciousRep3Share<gfp_<0, 1> >; U = MaliciousRep3Share<gf2n_long>]’
 ./Processor/FieldMachine.hpp:50:5:   required from ‘FieldMachine<U, V, W, X>::FieldMachine(int, const char**, ez::ezOptionParser&, OnlineOptions&, int) [with U = MaliciousRep3Share; V = MaliciousRep3Share; W = HonestMajorityMachine; X = gf2n_long]’
 ./Processor/FieldMachine.hpp:28:5:   required from ‘HonestMajorityFieldMachine<U, V>::HonestMajorityFieldMachine(int, const char**, ez::ezOptionParser&, int) [with U = MaliciousRep3Share; V = HonestMajorityMachine]’
 ./Processor/FieldMachine.hpp:20:5:   required from ‘HonestMajorityFieldMachine<U, V>::HonestMajorityFieldMachine(int, const char**) [with U = MaliciousRep3Share; V = HonestMajorityMachine]’
 Machines/malicious-rep-field-party.cpp:14:62:   required from here
-./Processor/Input.hpp:216:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  216 | T InputBase<T>::finalize(int player, int n_bits)
-      |   ^~~~~~~~~~~~
-g++ -o BMR/Party.o BMR/Party.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
+./Math/FixedVec.h:278:20: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  278 |     FixedVec<T, L> operator>>(int i) const
+      |                    ^~~~~~~~
 ./BMR/RealProgramParty.hpp: In constructor ‘RealProgramParty<T>::RealProgramParty(int, const char**) [with T = Rep3Share<gf2n_long>]’:
 ./BMR/RealProgramParty.hpp:136:51: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   136 |                 deltas.push_back(inputter.finalize(i));
       |                                  ~~~~~~~~~~~~~~~~~^~~
-./Protocols/Replicated.hpp: In instantiation of ‘FixedVec<T, 2> ReplicatedBase::get_random() [with T = gf2n_long]’:
-./Protocols/Replicated.hpp:374:61:   required from ‘T Replicated<T>::get_random() [with T = Rep3Share<gf2n_long>]’
-./Protocols/Replicated.hpp:372:3:   required from here
-./Protocols/Replicated.hpp:378:16: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  378 | FixedVec<T, 2> ReplicatedBase::get_random()
-      |                ^~~~~~~~~~~~~~
 In file included from ./GC/RepPrep.hpp:14,
                  from ./Machines/Rep.hpp:20:
 ./Protocols/ReplicatedPrep.hpp: In function ‘void XOR(std::vector<T>&, std::vector<T>&, std::vector<T>&, typename T::Protocol&) [with T = Rep3Share<gf2n_long>]’:
@@ -431,15 +465,8 @@ In file included from ./GC/RepPrep.hpp:14,
 ./Protocols/ReplicatedPrep.hpp:1437:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
  1437 | T BufferPrep<T>::get_random()
       |   ^~~~~~~~~~~~~
-In file included from ./GC/ShareThread.hpp:15,
-                 from ./Protocols/ReplicatedPrep.hpp:21,
-                 from ./Processor/OnlineMachine.hpp:16:
-./Processor/Data_Files.hpp: In instantiation of ‘T Preprocessing<T>::get_random_from_inputs(int) [with T = Rep3Share<gf2n_long>]’:
-./Processor/Data_Files.h:477:10:   required from ‘T Preprocessing<T>::get_random_no_count() [with T = Rep3Share<gf2n_long>]’
-./Processor/Data_Files.h:474:3:   required from here
-./Processor/Data_Files.hpp:47:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-   47 | T Preprocessing<T>::get_random_from_inputs(int nplayers)
-      |   ^~~~~~~~~~~~~~~~
+g++ -o BMR/msg_types.o BMR/msg_types.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
+g++ -o BMR/proto_utils.o BMR/proto_utils.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 ./Protocols/Replicated.hpp: In member function ‘T Replicated<T>::get_random() [with T = Rep3Share<gf2n_long>]’:
 ./Protocols/Replicated.hpp:374:61: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   374 |     return ReplicatedBase::get_random<typename T::open_type>();
@@ -479,6 +506,25 @@ In file included from ./BMR/RealProgramParty.hpp:13:
 ./Protocols/Replicated.hpp:167:5: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   167 |     res = finalize_mul(n);
       |     ^~~
+./Protocols/Replicated.hpp: In member function ‘T Replicated<T>::get_random() [with T = Rep3Share<gf2n_long>]’:
+./Protocols/Replicated.hpp:372:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  372 | T Replicated<T>::get_random()
+      |   ^~~~~~~~~~~~~
+./Protocols/Replicated.hpp:374:61: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  374 |     return ReplicatedBase::get_random<typename T::open_type>();
+      |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
+./Protocols/Replicated.hpp: In member function ‘void ProtocolBase<T>::finalize_mult(T&, int) [with T = Rep3Share<gf2n_long>]’:
+./Protocols/Replicated.hpp:167:5: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  167 |     res = finalize_mul(n);
+      |     ^~~
+./Protocols/Replicated.hpp: In member function ‘FixedVec<T, 2> ReplicatedBase::get_random() [with T = gf2n_long]’:
+./Protocols/Replicated.hpp:378:16: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  378 | FixedVec<T, 2> ReplicatedBase::get_random()
+      |                ^~~~~~~~~~~~~~
+./Processor/Input.hpp: In member function ‘T InputBase<T>::finalize(int, int) [with T = Rep3Share<gf2n_long>]’:
+./Processor/Input.hpp:216:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  216 | T InputBase<T>::finalize(int player, int n_bits)
+      |   ^~~~~~~~~~~~
 ./BMR/RealGarbleWire.hpp: In member function ‘void RealGarbleWire<T>::XOR(const RealGarbleWire<T>&, const RealGarbleWire<T>&) [with T = Rep3Share<gf2n_long>]’:
 ./BMR/RealGarbleWire.hpp:93:26: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    93 |         mask = left.mask + right.mask;
@@ -559,50 +605,6 @@ In file included from ./BMR/RealProgramParty.hpp:15:
 ./BMR/Register.hpp:51:17: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    51 |                 dest = T::constant(value.get(), party.get_id() - 1, party.get_mac_key().get());
       |                 ^~~~
-./Math/FixedVec.h: In instantiation of ‘FixedVec<T, L> FixedVec<T, L>::operator>>(int) const [with T = gf2n_long; int L = 2]’:
-./Protocols/Rep3Share.h:111:27:   required from ‘static void RepShare<T, L>::shrsi(SubProcessor<U>&, const Instruction&, std::false_type) [with U = MaliciousRep3Share<gf2n_long>; T = gf2n_long; int L = 2; std::false_type = std::integral_constant<bool, false>]’
-./Protocols/Rep3Share.h:93:14:   required from ‘static void RepShare<T, L>::shrsi(SubProcessor<U>&, const Instruction&) [with U = MaliciousRep3Share<gf2n_long>; T = gf2n_long; int L = 2]’
-./Processor/Instruction.hpp:1163:21:   required from ‘void Instruction::execute(Processor<sint, sgf2n>&) const [with sint = MaliciousRep3Share<gfp_<0, 1> >; sgf2n = MaliciousRep3Share<gf2n_long>]’
-./Processor/Instruction.hpp:1577:30:   required from ‘void Program::execute_with_errors(Processor<sint, sgf2n>&) const [with sint = MaliciousRep3Share<gfp_<0, 1> >; sgf2n = MaliciousRep3Share<gf2n_long>]’
-./Processor/Instruction.hpp:1496:24:   required from ‘void Program::execute(Processor<sint, sgf2n>&) const [with sint = MaliciousRep3Share<gfp_<0, 1> >; sgf2n = MaliciousRep3Share<gf2n_long>]’
-./Processor/Online-Thread.hpp:289:33:   [ skipping 5 instantiation contexts, use -ftemplate-backtrace-limit=0 to disable ]
-./Processor/OnlineMachine.hpp:192:68:   required from ‘int OnlineMachine::run_with_error() [with T = MaliciousRep3Share<gfp_<0, 1> >; U = MaliciousRep3Share<gf2n_long>]’
-./Processor/OnlineMachine.hpp:170:36:   required from ‘int OnlineMachine::run() [with T = MaliciousRep3Share<gfp_<0, 1> >; U = MaliciousRep3Share<gf2n_long>]’
-./Processor/FieldMachine.hpp:50:5:   required from ‘FieldMachine<U, V, W, X>::FieldMachine(int, const char**, ez::ezOptionParser&, OnlineOptions&, int) [with U = MaliciousRep3Share; V = MaliciousRep3Share; W = HonestMajorityMachine; X = gf2n_long]’
-./Processor/FieldMachine.hpp:28:5:   required from ‘HonestMajorityFieldMachine<U, V>::HonestMajorityFieldMachine(int, const char**, ez::ezOptionParser&, int) [with U = MaliciousRep3Share; V = HonestMajorityMachine]’
-./Processor/FieldMachine.hpp:20:5:   required from ‘HonestMajorityFieldMachine<U, V>::HonestMajorityFieldMachine(int, const char**) [with U = MaliciousRep3Share; V = HonestMajorityMachine]’
-Machines/malicious-rep-field-party.cpp:14:62:   required from here
-./Math/FixedVec.h:278:20: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  278 |     FixedVec<T, L> operator>>(int i) const
-      |                    ^~~~~~~~
-./Math/FixedVec.h: In instantiation of ‘FixedVec<T, L> FixedVec<T, L>::operator/(const FixedVec<T, L>&) const [with T = gf2n_long; int L = 2]’:
-./Protocols/ReplicatedPrep.hpp:327:63:   required from ‘void BufferPrep<T>::buffer_inverses(std::true_type) [with int <anonymous> = 0; T = Rep3Share<gf2n_long>; std::true_type = std::integral_constant<bool, true>]’
-./Protocols/ReplicatedPrep.hpp:301:23:   required from ‘void BufferPrep<T>::buffer_inverses() [with T = Rep3Share<gf2n_long>]’
-./Protocols/ReplicatedPrep.hpp:299:6:   required from here
-./Math/FixedVec.h:191:19: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  191 |     FixedVec<T, L>operator/(const FixedVec<T, L>& other) const
-      |                   ^~~~~~~~
-g++ -o BMR/Register.o BMR/Register.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
-./Protocols/Replicated.hpp: In member function ‘T Replicated<T>::get_random() [with T = Rep3Share<gf2n_long>]’:
-./Protocols/Replicated.hpp:372:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  372 | T Replicated<T>::get_random()
-      |   ^~~~~~~~~~~~~
-./Protocols/Replicated.hpp:374:61: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  374 |     return ReplicatedBase::get_random<typename T::open_type>();
-      |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~
-./Protocols/Replicated.hpp: In member function ‘void ProtocolBase<T>::finalize_mult(T&, int) [with T = Rep3Share<gf2n_long>]’:
-./Protocols/Replicated.hpp:167:5: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  167 |     res = finalize_mul(n);
-      |     ^~~
-./Protocols/Replicated.hpp: In member function ‘FixedVec<T, 2> ReplicatedBase::get_random() [with T = gf2n_long]’:
-./Protocols/Replicated.hpp:378:16: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  378 | FixedVec<T, 2> ReplicatedBase::get_random()
-      |                ^~~~~~~~~~~~~~
-./Processor/Input.hpp: In member function ‘T InputBase<T>::finalize(int, int) [with T = Rep3Share<gf2n_long>]’:
-./Processor/Input.hpp:216:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  216 | T InputBase<T>::finalize(int player, int n_bits)
-      |   ^~~~~~~~~~~~
-g++ -o BMR/TrustedParty.o BMR/TrustedParty.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 In file included from ./Machines/Rep.hpp:11:
 ./Processor/Instruction.hpp: In member function ‘void Program::execute_with_errors(Processor<sint, sgf2n>&) const [with sint = Rep3Share<gfp_<0, 1> >; sgf2n = Rep3Share<gf2n_long>]’:
 ./Processor/instructions.h:130:30: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
@@ -1072,17 +1074,6 @@ In file included from ./Processor/Online-Thread.hpp:13:
 ./Processor/Instruction.hpp:1563:9: note: in expansion of macro ‘ARITHMETIC_INSTRUCTIONS’
  1563 |         ARITHMETIC_INSTRUCTIONS
       |         ^~~~~~~~~~~~~~~~~~~~~~~
-In file included from ./Protocols/ShamirInput.hpp:11,
-                 from ./Protocols/fake-stuff.hpp:12,
-                 from ./Processor/Machine.hpp:9:
-./Protocols/ReplicatedInput.hpp: In instantiation of ‘T PrepLessInput<T>::finalize_mine() [with T = Rep3Share<gf2n_long>]’:
-./Protocols/ReplicatedInput.hpp:208:3:   required from here
-./Protocols/ReplicatedInput.hpp:208:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  208 | T PrepLessInput<T>::finalize_mine()
-      |   ^~~~~~~~~~~~~~~~
-./Protocols/ReplicatedInput.hpp: In instantiation of ‘T PrepLessInput<T>::finalize_mine() [with T = MaliciousRep3Share<gf2n_long>]’:
-./Protocols/ReplicatedInput.hpp:208:3:   required from here
-./Protocols/ReplicatedInput.hpp:208:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
 ./Processor/Instruction.hpp: In member function ‘void Program::execute_with_errors(Processor<sint, sgf2n>&) const [with sint = Rep3Share<gfp_<0, 4> >; sgf2n = Rep3Share<gf2n_long>]’:
 ./Processor/instructions.h:118:18: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   118 |             auto tmp = sgf2n::constant(int(n), Proc.P.my_num(), Proc2.MC.get_alphai()), \
@@ -1219,6 +1210,18 @@ In file included from ./Protocols/ShamirInput.hpp:11,
 ./Processor/Instruction.hpp:1563:9: note: in expansion of macro ‘ARITHMETIC_INSTRUCTIONS’
  1563 |         ARITHMETIC_INSTRUCTIONS
       |         ^~~~~~~~~~~~~~~~~~~~~~~
+g++ -o BMR/network/Client.o BMR/network/Client.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
+In file included from ./Protocols/ShamirInput.hpp:11,
+                 from ./Protocols/fake-stuff.hpp:12,
+                 from ./Processor/Machine.hpp:9:
+./Protocols/ReplicatedInput.hpp: In instantiation of ‘T PrepLessInput<T>::finalize_mine() [with T = Rep3Share<gf2n_long>]’:
+./Protocols/ReplicatedInput.hpp:208:3:   required from here
+./Protocols/ReplicatedInput.hpp:208:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  208 | T PrepLessInput<T>::finalize_mine()
+      |   ^~~~~~~~~~~~~~~~
+./Protocols/ReplicatedInput.hpp: In instantiation of ‘T PrepLessInput<T>::finalize_mine() [with T = MaliciousRep3Share<gf2n_long>]’:
+./Protocols/ReplicatedInput.hpp:208:3:   required from here
+./Protocols/ReplicatedInput.hpp:208:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
 In file included from ./Processor/Program.h:5,
                  from ./Processor/Memory.h:15,
                  from ./Protocols/Replicated.h:18,
@@ -1250,16 +1253,6 @@ In file included from ./GC/ShareThread.hpp:15,
 ./Processor/Data_Files.h:477:10:   required from ‘T Preprocessing<T>::get_random_no_count() [with T = Rep3Share<gf2n_long>]’
 ./Processor/Data_Files.h:474:3:   required from here
 ./Processor/Data_Files.hpp:47:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-./BMR/RealGarbleWire.hpp: In member function ‘void GarbleJob<T>::middle_round(RealProgramParty<T>&, Protocol&) [with T = Rep3Share<gf2n_long>]’:
-./BMR/RealGarbleWire.hpp:60:70: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-   60 |                                                 lambda_uv + lambda_v * alpha + lambda_u * beta
-      |                                                             ~~~~~~~~~^~~~~~~
-./BMR/RealGarbleWire.hpp:59:79: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-   59 |                                 second_protocol.prepare_mul(party.shared_delta(j),
-      |                                                             ~~~~~~~~~~~~~~~~~~^~~
-./BMR/RealGarbleWire.hpp:60:89: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-   60 |                                                 lambda_uv + lambda_v * alpha + lambda_u * beta
-      |                                                                                ~~~~~~~~~^~~~~~
 In file included from ./Protocols/edabit.h:9,
                  from ./Processor/Data_Files.h:13:
 ./Tools/FixedVector.h: In instantiation of ‘T FixedVector<T, L>::pop() [with T = MaliciousRep3Share<gf2n_long>; long unsigned int L = 64]’:
@@ -1283,10 +1276,16 @@ In file included from ./Protocols/edabit.h:9,
 ./Tools/FixedVector.h:52:7: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    52 |     T pop()
       |       ^~~
-Machines/BMR/rep-bmr-party.cpp: In member function ‘virtual Rep3Share<gf2n_long> Replicated<Rep3Share<gf2n_long> >::_ZThn6040_N10ReplicatedI9Rep3ShareI9gf2n_longEE12finalize_mulEi(int)’:
-Machines/BMR/rep-bmr-party.cpp:12:1: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-   12 | }
-      | ^
+./BMR/RealGarbleWire.hpp: In member function ‘void GarbleJob<T>::middle_round(RealProgramParty<T>&, Protocol&) [with T = Rep3Share<gf2n_long>]’:
+./BMR/RealGarbleWire.hpp:60:70: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+   60 |                                                 lambda_uv + lambda_v * alpha + lambda_u * beta
+      |                                                             ~~~~~~~~~^~~~~~~
+./BMR/RealGarbleWire.hpp:59:79: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+   59 |                                 second_protocol.prepare_mul(party.shared_delta(j),
+      |                                                             ~~~~~~~~~~~~~~~~~~^~~
+./BMR/RealGarbleWire.hpp:60:89: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+   60 |                                                 lambda_uv + lambda_v * alpha + lambda_u * beta
+      |                                                                                ~~~~~~~~~^~~~~~
 ./Protocols/Replicated.hpp: In member function ‘T Replicated<T>::get_random() [with T = Rep3Share<gf2n_long>]’:
 ./Protocols/Replicated.hpp:374:61: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   374 |     return ReplicatedBase::get_random<typename T::open_type>();
@@ -1629,6 +1628,10 @@ In file included from ./FHE/Ring.h:10,
       |                                              ~~~~~~~~~~~~~
   527 |                     idx[0] * unit_size + l) - diff;
       |                     ~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~
+Machines/BMR/rep-bmr-party.cpp: In member function ‘virtual Rep3Share<gf2n_long> Replicated<Rep3Share<gf2n_long> >::_ZThn6040_N10ReplicatedI9Rep3ShareI9gf2n_longEE12finalize_mulEi(int)’:
+Machines/BMR/rep-bmr-party.cpp:12:1: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+   12 | }
+      | ^
 ./Protocols/edabit.h: In member function ‘edabit<T> edabitvec<T>::next() [with T = MaliciousRep3Share<gf2n_long>]’:
 ./Protocols/edabit.h:80:9: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    80 |         res.first = a.pop();
@@ -1908,6 +1911,10 @@ In member function ‘FixedVec<T, L>& FixedVec<T, L>::operator>>=(int) [with T =
 ./Processor/Instruction.hpp:1563:9: note: in expansion of macro ‘ARITHMETIC_INSTRUCTIONS’
  1563 |         ARITHMETIC_INSTRUCTIONS
       |         ^~~~~~~~~~~~~~~~~~~~~~~
+Machines/replicated-field-party.cpp: In member function ‘T InputBase<T>::finalize(int, int) [with T = Rep3Share<gf2n_long>]’:
+Machines/replicated-field-party.cpp:13:1: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+   13 | }
+      | ^
 ./Processor/Instruction.hpp: In member function ‘void Program::execute_with_errors(Processor<sint, sgf2n>&) const [with sint = MaliciousRep3Share<gfp_<0, 4> >; sgf2n = MaliciousRep3Share<gf2n_long>]’:
 ./Processor/instructions.h:118:18: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   118 |             auto tmp = sgf2n::constant(int(n), Proc.P.my_num(), Proc2.MC.get_alphai()), \
@@ -2044,13 +2051,7 @@ In member function ‘FixedVec<T, L>& FixedVec<T, L>::operator>>=(int) [with T =
 ./Processor/Instruction.hpp:1563:9: note: in expansion of macro ‘ARITHMETIC_INSTRUCTIONS’
  1563 |         ARITHMETIC_INSTRUCTIONS
       |         ^~~~~~~~~~~~~~~~~~~~~~~
-Machines/replicated-field-party.cpp: In member function ‘T InputBase<T>::finalize(int, int) [with T = Rep3Share<gf2n_long>]’:
-Machines/replicated-field-party.cpp:13:1: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-   13 | }
-      | ^
-g++ -o BMR/msg_types.o BMR/msg_types.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
-g++ -o BMR/proto_utils.o BMR/proto_utils.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
-g++ -o BMR/network/Client.o BMR/network/Client.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
+g++ -o BMR/network/Node.o BMR/network/Node.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 In function ‘RepShare<T, L> RepShare<T, L>::operator*=(const U&) [with U = int; T = gf2n_long; int L = 2]’:
 cc1plus: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
 ./BMR/RealGarbleWire.hpp: In member function ‘void GarbleJob<T>::middle_round(RealProgramParty<T>&, Protocol&) [with T = Rep3Share<gf2n_long>]’:
@@ -2068,7 +2069,9 @@ cc1plus: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>�
 ./BMR/RealGarbleWire.hpp:60:78: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    60 |                                                 lambda_uv + lambda_v * alpha + lambda_u * beta
       |                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
-g++ -o BMR/network/Node.o BMR/network/Node.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
+g++ -o BMR/network/Server.o BMR/network/Server.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
+g++ -o BMR/network/utils.o BMR/network/utils.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
+g++ -o Machines/BMR/mal-rep-bmr-party.o Machines/BMR/mal-rep-bmr-party.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 Machines/malicious-rep-field-party.cpp: In member function ‘T InputBase<T>::finalize(int, int) [with T = Rep3Share<gf2n_long>]’:
 Machines/malicious-rep-field-party.cpp:15:1: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    15 | }
@@ -2085,7 +2088,6 @@ In static member function ‘static void EvalRegister::store_clear_in_dynamic(GC
 ./BMR/Register.hpp:189:56: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   189 |                         mask += spdz_wires.back().mask << i;
       |                                 ~~~~~~~~~~~~~~~~~~~~~~~^~~~
-g++ -o BMR/network/Server.o BMR/network/Server.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 ./BMR/Register.hpp: In static member function ‘static void EvalRegister::store(GC::Memory<U>&, const std::vector<GC::WriteAccess<T> >&) [with T = GC::Secret<EvalRegister>; U = Rep3Share<gf2n_long>]’:
 ./BMR/Register.hpp:100:59: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   100 |                         tmp = spdz_wire.mask + U::constant(ext, (int)party.get_id() - 1, party.get_mac_key());
@@ -2099,8 +2101,6 @@ In member function ‘FixedVec<T, L>& FixedVec<T, L>::operator<<=(int) [with T =
 ./BMR/RealGarbleWire.hpp:136:6: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   136 | void GarbleInputter<T>::exchange()
       |      ^~~~~~~~~~~~~~~~~
-g++ -o BMR/network/utils.o BMR/network/utils.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
-g++ -o Machines/BMR/mal-rep-bmr-party.o Machines/BMR/mal-rep-bmr-party.cpp -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -MMD -MP -c
 g++ -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC -shared -o libSPDZ.so Processor/BaseMachine.o Processor/DataPositions.o Processor/ExternalClients.o Processor/FixInput.o Processor/FloatInput.o Processor/FunctionArgument.o Processor/HonestMajorityMachine.o Processor/Instruction.o Processor/OnlineOptions.o Processor/PrepBase.o Processor/ProcessorBase.o Processor/Program.o Processor/RingOptions.o Processor/ThreadQueue.o Processor/ThreadQueues.o Processor/ThreadStats.o Processor/TruncPrTuple.o Protocols/ShamirOptions.o Protocols/ShareInterface.o Math/Bit.o Math/Setup.o Math/Square.o Math/ValueInterface.o Math/Zp_Data.o Math/bigint.o Math/gf2n.o Math/gf2nlong.o Math/gfpvar.o Math/square128.o Tools/BitVector.o Tools/Buffer.o Tools/CodeLocations.o Tools/Commit.o Tools/Coordinator.o Tools/DiskVector.o Tools/Exceptions.o Tools/ExecutionStats.o Tools/FlexBuffer.o Tools/Hash.o Tools/Lock.o Tools/NamedStats.o Tools/NetworkOptions.o Tools/OfflineMachineBase.o Tools/Signal.o Tools/Subroutines.o Tools/TimerWithComm.o Tools/Waksman.o Tools/aes-ni.o Tools/aes.o Tools/benchmarking.o Tools/mkpath.o Tools/names.o Tools/octetStream.o Tools/random.o Tools/time-func.o Networking/CryptoPlayer.o Networking/Player.o Networking/Receiver.o Networking/Sender.o Networking/Server.o Networking/ServerSocket.o Networking/sockets.o GC/square64.o GC/Instruction.o -lgmpxx -lgmp -lsodium   -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ/local/lib -L/home/ubuntu/MP-SPDZ/local/lib -lssl -lcrypto -lboost_filesystem -lboost_iostreams -lrt -z noexecstack -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ
 g++ -o replicated-bin-party.x -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC Machines/replicated-bin-party.o libSPDZ.so GC/square64.o -lgmpxx -lgmp -lsodium   -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ/local/lib -L/home/ubuntu/MP-SPDZ/local/lib -lssl -lcrypto -lboost_filesystem -lboost_iostreams -lrt -z noexecstack -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ libSPDZ.so
 g++ -o malicious-rep-bin-party.x -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC Machines/malicious-rep-bin-party.o libSPDZ.so GC/square64.o -lgmpxx -lgmp -lsodium   -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ/local/lib -L/home/ubuntu/MP-SPDZ/local/lib -lssl -lcrypto -lboost_filesystem -lboost_iostreams -lrt -z noexecstack -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ libSPDZ.so
@@ -2112,17 +2112,6 @@ g++ -o malicious-rep-bin-party.x -DNO_AVX_OT -I./local/include -march=armv8.2-a+
 ./Protocols/ReplicatedPrep.hpp:1384:6: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
  1384 | void BufferPrep<T>::buffer_inputs_as_usual(int player, SubProcessor<T>* proc)
       |      ^~~~~~~~~~~~~
-In member function ‘FixedVec<T, L>& FixedVec<T, L>::operator>>=(int) [with T = gf2n_long; int L = 2]’,
-    inlined from ‘void SemiHonestRingPrep<T>::buffer_bits(std::false_type, std::true_type) [with int <anonymous> = 0; T = Rep3Share<gf2n_long>]’ at ./Protocols/ReplicatedPrep.hpp:1189:23,
-    inlined from ‘void SemiHonestRingPrep<T>::buffer_bits() [with T = Rep3Share<gf2n_long>]’ at ./Protocols/ReplicatedPrep.hpp:1205:16:
-./Math/FixedVec.h:294:23: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  294 |         *this = *this >> i;
-      |                 ~~~~~~^~~~
-./Protocols/ReplicatedPrep.hpp: In member function ‘void SemiHonestRingPrep<T>::buffer_bits() [with T = Rep3Share<gf2n_long>]’:
-./Protocols/ReplicatedPrep.hpp:1202:6: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
- 1202 | void SemiHonestRingPrep<T>::buffer_bits()
-      |      ^~~~~~~~~~~~~~~~~~~~~
-g++ -o rep-bmr-party.x -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC Machines/BMR/rep-bmr-party.o BMR/AndJob.o BMR/CommonParty.o BMR/GarbledGate.o BMR/Key.o BMR/Party.o BMR/Register.o BMR/TrustedParty.o BMR/msg_types.o BMR/proto_utils.o BMR/network/Client.o BMR/network/Node.o BMR/network/Server.o BMR/network/utils.o libSPDZ.so -lboost_thread  -lgmpxx -lgmp -lsodium   -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ/local/lib -L/home/ubuntu/MP-SPDZ/local/lib -lssl -lcrypto -lboost_filesystem -lboost_iostreams -lrt -z noexecstack -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ
 In file included from ./Protocols/ReplicatedInput.hpp:12,
                  from ./Protocols/ShamirInput.hpp:11,
                  from ./Protocols/fake-stuff.hpp:12,
@@ -2161,6 +2150,16 @@ Machines/BMR/mal-rep-bmr-party.cpp:14:63:   required from here
 ./Protocols/Rep3Share.h:160:22: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   160 |     static Rep3Share constant(T value, int my_num,
       |                      ^~~~~~~~
+In member function ‘FixedVec<T, L>& FixedVec<T, L>::operator>>=(int) [with T = gf2n_long; int L = 2]’,
+    inlined from ‘void SemiHonestRingPrep<T>::buffer_bits(std::false_type, std::true_type) [with int <anonymous> = 0; T = Rep3Share<gf2n_long>]’ at ./Protocols/ReplicatedPrep.hpp:1189:23,
+    inlined from ‘void SemiHonestRingPrep<T>::buffer_bits() [with T = Rep3Share<gf2n_long>]’ at ./Protocols/ReplicatedPrep.hpp:1205:16:
+./Math/FixedVec.h:294:23: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  294 |         *this = *this >> i;
+      |                 ~~~~~~^~~~
+./Protocols/ReplicatedPrep.hpp: In member function ‘void SemiHonestRingPrep<T>::buffer_bits() [with T = Rep3Share<gf2n_long>]’:
+./Protocols/ReplicatedPrep.hpp:1202:6: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+ 1202 | void SemiHonestRingPrep<T>::buffer_bits()
+      |      ^~~~~~~~~~~~~~~~~~~~~
 ./Math/FixedVec.h: In instantiation of ‘FixedVec<T, L> operator*(const U&, const FixedVec<T, L>&) [with U = gf2n_long; T = gf2n_long; int L = 2]’:
 ./Protocols/Beaver.hpp:94:23:   required from ‘T Beaver<T>::finalize_mul(int) [with T = MaliciousRep3Share<gf2n_long>]’
 ./BMR/RealGarbleWire.hpp:46:35:   required from ‘void GarbleJob<T>::middle_round(RealProgramParty<T>&, Protocol&) [with T = MaliciousRep3Share<gf2n_long>; Protocol = Beaver<MaliciousRep3Share<gf2n_long> >]’
@@ -2210,8 +2209,6 @@ Machines/BMR/mal-rep-bmr-party.cpp:14:63:   required from here
 ./Math/FixedVec.h:270:20: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   270 |     FixedVec<T, L> operator<<(int i) const
       |                    ^~~~~~~~
-Machines/malicious-rep-field-party.cpp: In member function ‘virtual Rep3Share<gf2n_long> Replicated<Rep3Share<gf2n_long> >::_ZThn6040_N10ReplicatedI9Rep3ShareI9gf2n_longEE12finalize_mulEi(int)’:
-Machines/malicious-rep-field-party.cpp:15:1: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
 ./Protocols/ReplicatedInput.hpp: In instantiation of ‘T PrepLessInput<T>::finalize_mine() [with T = Rep3Share<gf2n_long>]’:
 ./Protocols/ReplicatedInput.hpp:208:3:   required from here
 ./Protocols/ReplicatedInput.hpp:208:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
@@ -2297,10 +2294,6 @@ In file included from ./Machines/MalRep.hpp:10,
 ./Protocols/Replicated.hpp:320:10: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   320 | inline T Replicated<T>::finalize_mul(int n)
       |          ^~~~~~~~~~~~~
-./Protocols/ReplicatedInput.hpp: In member function ‘T PrepLessInput<T>::finalize_mine() [with T = MaliciousRep3Share<gf2n_long>]’:
-./Protocols/ReplicatedInput.hpp:208:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  208 | T PrepLessInput<T>::finalize_mine()
-      |   ^~~~~~~~~~~~~~~~
 ./Protocols/MaliciousRepPrep.hpp: In function ‘void sacrifice(const std::vector<std::array<T, 5> >&, Player&) [with T = MaliciousRep3Share<gf2n_long>; U = gf2n_long]’:
 ./Protocols/MaliciousRepPrep.hpp:127:39: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   127 |         masked.push_back(T::Mul(a, t) - a_prime);
@@ -2519,28 +2512,7 @@ In file included from ./BMR/RealProgramParty.hpp:15:
 ./BMR/Register.hpp:51:35: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    51 |                 dest = T::constant(value.get(), party.get_id() - 1, party.get_mac_key().get());
       |                        ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-./Processor/Data_Files.h: In member function ‘T Preprocessing<T>::get_random_for_open() [with T = Rep3Share<gf2n_long>]’:
-./Processor/Data_Files.h:466:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  466 | T Preprocessing<T>::get_random_for_open()
-      |   ^~~~~~~~~~~~~~~~
-./Protocols/Replicated.hpp: In member function ‘T ProtocolBase<T>::get_random() [with T = MaliciousRep3Share<gf2n_long>]’:
-./Protocols/Replicated.hpp:182:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  182 | T ProtocolBase<T>::get_random()
-      |   ^~~~~~~~~~~~~~~
-./Protocols/Replicated.hpp: In member function ‘T ProtocolBase<T>::get_random() [with T = Rep3Share<gf2n_long>]’:
-./Protocols/Replicated.hpp:182:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-In file included from ./Processor/DummyProtocol.h:17,
-                 from ./GC/NoShare.h:9,
-                 from ./GC/ShareSecret.h:16,
-                 from ./Protocols/Rep3Share.h:13:
-./Processor/Input.h: In member function ‘T InputBase<T>::finalize_mine() [with T = MaliciousRep3Share<gf2n_long>]’:
-./Processor/Input.h:38:15: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-   38 |     virtual T finalize_mine()
-      |               ^~~~~~~~~~~~~
-./Protocols/Replicated.hpp: In member function ‘T Replicated<T>::get_random() [with T = Rep3Share<gf2n_long>]’:
-./Protocols/Replicated.hpp:372:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  372 | T Replicated<T>::get_random()
-      |   ^~~~~~~~~~~~~
+g++ -o rep-bmr-party.x -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC Machines/BMR/rep-bmr-party.o BMR/AndJob.o BMR/CommonParty.o BMR/GarbledGate.o BMR/Key.o BMR/Party.o BMR/Register.o BMR/TrustedParty.o BMR/msg_types.o BMR/proto_utils.o BMR/network/Client.o BMR/network/Node.o BMR/network/Server.o BMR/network/utils.o libSPDZ.so -lboost_thread  -lgmpxx -lgmp -lsodium   -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ/local/lib -L/home/ubuntu/MP-SPDZ/local/lib -lssl -lcrypto -lboost_filesystem -lboost_iostreams -lrt -z noexecstack -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ
 Machines/BMR/mal-rep-bmr-party.cpp: In member function ‘T InputBase<T>::finalize(int, int) [with T = MaliciousRep3Share<gf2n_long>]’:
 Machines/BMR/mal-rep-bmr-party.cpp:15:1: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    15 | }
@@ -2555,6 +2527,22 @@ Machines/BMR/mal-rep-bmr-party.cpp:15:1: note: parameter passing for argument of
 ./BMR/RealGarbleWire.hpp:60:89: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    60 |                                                 lambda_uv + lambda_v * alpha + lambda_u * beta
       |                                                                                ~~~~~~~~~^~~~~~
+Machines/malicious-rep-field-party.cpp: In member function ‘virtual Rep3Share<gf2n_long> Replicated<Rep3Share<gf2n_long> >::_ZThn6040_N10ReplicatedI9Rep3ShareI9gf2n_longEE12finalize_mulEi(int)’:
+Machines/malicious-rep-field-party.cpp:15:1: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+./Protocols/ReplicatedInput.hpp: In member function ‘T PrepLessInput<T>::finalize_mine() [with T = MaliciousRep3Share<gf2n_long>]’:
+./Protocols/ReplicatedInput.hpp:208:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  208 | T PrepLessInput<T>::finalize_mine()
+      |   ^~~~~~~~~~~~~~~~
+./Processor/Data_Files.h: In member function ‘T Preprocessing<T>::get_random_for_open() [with T = Rep3Share<gf2n_long>]’:
+./Processor/Data_Files.h:466:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  466 | T Preprocessing<T>::get_random_for_open()
+      |   ^~~~~~~~~~~~~~~~
+./Protocols/Replicated.hpp: In member function ‘T ProtocolBase<T>::get_random() [with T = MaliciousRep3Share<gf2n_long>]’:
+./Protocols/Replicated.hpp:182:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  182 | T ProtocolBase<T>::get_random()
+      |   ^~~~~~~~~~~~~~~
+./Protocols/Replicated.hpp: In member function ‘T ProtocolBase<T>::get_random() [with T = Rep3Share<gf2n_long>]’:
+./Protocols/Replicated.hpp:182:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
 Machines/BMR/mal-rep-bmr-party.cpp: In member function ‘virtual Rep3Share<gf2n_long> Replicated<Rep3Share<gf2n_long> >::_ZThn6040_N10ReplicatedI9Rep3ShareI9gf2n_longEE12finalize_mulEi(int)’:
 Machines/BMR/mal-rep-bmr-party.cpp:15:1: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    15 | }
@@ -2573,10 +2561,14 @@ Machines/BMR/mal-rep-bmr-party.cpp:15:1: note: parameter passing for argument of
       |   ^~~~~~~~~~~~~~~
 ./Protocols/Replicated.hpp: In member function ‘T ProtocolBase<T>::get_random() [with T = Rep3Share<gf2n_long>]’:
 ./Protocols/Replicated.hpp:182:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-./Protocols/ReplicatedPrep.hpp: In member function ‘T BufferPrep<T>::get_random() [with T = MaliciousRep3Share<gf2n_long>]’:
-./Protocols/ReplicatedPrep.hpp:1437:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
- 1437 | T BufferPrep<T>::get_random()
-      |   ^~~~~~~~~~~~~
+In file included from ./Processor/DummyProtocol.h:17,
+                 from ./GC/NoShare.h:9,
+                 from ./GC/ShareSecret.h:16,
+                 from ./Protocols/Rep3Share.h:13:
+./Processor/Input.h: In member function ‘T InputBase<T>::finalize_mine() [with T = MaliciousRep3Share<gf2n_long>]’:
+./Processor/Input.h:38:15: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+   38 |     virtual T finalize_mine()
+      |               ^~~~~~~~~~~~~
 In file included from ./Processor/DummyProtocol.h:17,
                  from ./GC/NoShare.h:9,
                  from ./GC/ShareSecret.h:16,
@@ -2589,10 +2581,10 @@ In file included from ./Processor/DummyProtocol.h:17,
 ./Protocols/Replicated.hpp:372:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   372 | T Replicated<T>::get_random()
       |   ^~~~~~~~~~~~~
-./Processor/Input.hpp: In member function ‘T InputBase<T>::finalize(int, int) [with T = Rep3Share<gf2n_long>]’:
-./Processor/Input.hpp:216:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  216 | T InputBase<T>::finalize(int player, int n_bits)
-      |   ^~~~~~~~~~~~
+./Protocols/Replicated.hpp: In member function ‘T Replicated<T>::get_random() [with T = Rep3Share<gf2n_long>]’:
+./Protocols/Replicated.hpp:372:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  372 | T Replicated<T>::get_random()
+      |   ^~~~~~~~~~~~~
 ./Protocols/ReplicatedPrep.hpp: In member function ‘T BufferPrep<T>::get_random() [with T = MaliciousRep3Share<gf2n_long>]’:
 ./Protocols/ReplicatedPrep.hpp:1437:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
  1437 | T BufferPrep<T>::get_random()
@@ -2607,12 +2599,24 @@ In file included from ./Processor/DummyProtocol.h:17,
 ./Protocols/Replicated.hpp:372:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   372 | T Replicated<T>::get_random()
       |   ^~~~~~~~~~~~~
-./Processor/Input.hpp: In member function ‘T InputBase<T>::finalize(int, int) [with T = MaliciousRep3Share<gf2n_long>]’:
-./Processor/Input.hpp:216:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
 ./Processor/Input.hpp: In function ‘T InputBase<T>::finalize(int, int) [with T = MaliciousRep3Share<gf2n_long>]’:
 ./Processor/Input.hpp:216:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   216 | T InputBase<T>::finalize(int player, int n_bits)
       |   ^~~~~~~~~~~~
+./Protocols/ReplicatedPrep.hpp: In member function ‘T BufferPrep<T>::get_random() [with T = MaliciousRep3Share<gf2n_long>]’:
+./Protocols/ReplicatedPrep.hpp:1437:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+ 1437 | T BufferPrep<T>::get_random()
+      |   ^~~~~~~~~~~~~
+./Processor/Input.hpp: In member function ‘T InputBase<T>::finalize(int, int) [with T = Rep3Share<gf2n_long>]’:
+./Processor/Input.hpp:216:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  216 | T InputBase<T>::finalize(int player, int n_bits)
+      |   ^~~~~~~~~~~~
+./Math/FixedVec.h: In member function ‘FixedVec<T, L> FixedVec<T, L>::operator+(const FixedVec<T, L>&) const [with T = gf2n_long; int L = 2]’:
+./Math/FixedVec.h:170:19: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  170 |     FixedVec<T, L>operator+(const FixedVec<T, L>& other) const
+      |                   ^~~~~~~~
+./Processor/Input.hpp: In member function ‘T InputBase<T>::finalize(int, int) [with T = MaliciousRep3Share<gf2n_long>]’:
+./Processor/Input.hpp:216:3: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
 ./Math/FixedVec.h: In member function ‘FixedVec<T, L> FixedVec<T, L>::operator+(const FixedVec<T, L>&) const [with T = gf2n_long; int L = 2]’:
 ./Math/FixedVec.h:170:19: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   170 |     FixedVec<T, L>operator+(const FixedVec<T, L>& other) const
@@ -2621,18 +2625,6 @@ In file included from ./Processor/DummyProtocol.h:17,
 ./Protocols/Rep3Share.h:58:14: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    58 |     RepShare operator*(const U& other) const
       |              ^~~~~~~~
-./Protocols/ReplicatedPrep.hpp: In member function ‘T BufferPrep<T>::get_random() [with T = Rep3Share<gf2n_long>]’:
-./Protocols/ReplicatedPrep.hpp:1437:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
- 1437 | T BufferPrep<T>::get_random()
-      |   ^~~~~~~~~~~~~
-./Math/FixedVec.h: In member function ‘FixedVec<T, L> FixedVec<T, L>::operator+(const FixedVec<T, L>&) const [with T = gf2n_long; int L = 2]’:
-./Math/FixedVec.h:170:19: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  170 |     FixedVec<T, L>operator+(const FixedVec<T, L>& other) const
-      |                   ^~~~~~~~
-./Processor/Input.hpp: In static member function ‘static void InputBase<T>::input(SubProcessor<T>&, const ArgVector&, int) [with U = IntInput<gf2n_long>; T = Rep3Share<gf2n_long>]’:
-./Processor/Input.hpp:267:6: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-  267 | void InputBase<T>::input(SubProcessor<T>& Proc,
-      |      ^~~~~~~~~~~~
 ./Protocols/Beaver.hpp: In member function ‘T Beaver<T>::finalize_mul(int) [with T = MaliciousRep3Share<gf2n_long>]’:
 ./Protocols/Beaver.hpp:95:26: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    95 |     tmp += ((*triple)[0] * masked[1]);
@@ -2649,6 +2641,10 @@ In file included from ./Processor/DummyProtocol.h:17,
 ./Protocols/Beaver.hpp:94:23: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    94 |     tmp += (masked[0] * (*triple)[1]);
       |            ~~~~~~~~~~~^~~~~~~~~~~~~~~
+./Protocols/ReplicatedPrep.hpp: In member function ‘T BufferPrep<T>::get_random() [with T = Rep3Share<gf2n_long>]’:
+./Protocols/ReplicatedPrep.hpp:1437:3: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+ 1437 | T BufferPrep<T>::get_random()
+      |   ^~~~~~~~~~~~~
 ./BMR/Register.hpp: In static member function ‘static void EvalRegister::store(GC::Memory<U>&, const std::vector<GC::WriteAccess<U> >&) [with T = GC::Secret<EvalRegister>; U = MaliciousRep3Share<gf2n_long>]’:
 ./BMR/Register.hpp:100:59: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   100 |                         tmp = spdz_wire.mask + U::constant(ext, (int)party.get_id() - 1, party.get_mac_key());
@@ -2662,6 +2658,10 @@ In member function ‘FixedVec<T, L>& FixedVec<T, L>::operator<<=(int) [with T =
 ./BMR/RealGarbleWire.hpp:136:6: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   136 | void GarbleInputter<T>::exchange()
       |      ^~~~~~~~~~~~~~~~~
+./Processor/Input.hpp: In static member function ‘static void InputBase<T>::input(SubProcessor<T>&, const ArgVector&, int) [with U = IntInput<gf2n_long>; T = Rep3Share<gf2n_long>]’:
+./Processor/Input.hpp:267:6: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+  267 | void InputBase<T>::input(SubProcessor<T>& Proc,
+      |      ^~~~~~~~~~~~
 In function ‘RepShare<T, L> RepShare<T, L>::operator*=(const U&) [with U = int; T = gf2n_long; int L = 2]’:
 cc1plus: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
 In member function ‘void GarbleJob<T>::middle_round(RealProgramParty<T>&, Protocol&) [with T = MaliciousRep3Share<gf2n_long>]’,
@@ -2770,6 +2770,12 @@ In member function ‘edabit<T> edabitvec<T>::next() [with T = MaliciousRep3Shar
 ./Protocols/edabit.h:80:26: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    80 |         res.first = a.pop();
       |                     ~~~~~^~
+In member function ‘edabit<T> edabitvec<T>::next() [with T = Rep3Share<gf2n_long>]’,
+    inlined from ‘void BufferPrep<T>::get_edabit_no_count(bool, int, edabit<T>&) [with T = Rep3Share<gf2n_long>]’ at ./Protocols/ReplicatedPrep.hpp:1302:23:
+./Protocols/edabit.h:80:26: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
+   80 |         res.first = a.pop();
+      |                     ~~~~~^~
+g++ -o mal-rep-bmr-party.x -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC Machines/BMR/mal-rep-bmr-party.o BMR/AndJob.o BMR/CommonParty.o BMR/GarbledGate.o BMR/Key.o BMR/Party.o BMR/Register.o BMR/TrustedParty.o BMR/msg_types.o BMR/proto_utils.o BMR/network/Client.o BMR/network/Node.o BMR/network/Server.o BMR/network/utils.o libSPDZ.so -lboost_thread  -lgmpxx -lgmp -lsodium   -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ/local/lib -L/home/ubuntu/MP-SPDZ/local/lib -lssl -lcrypto -lboost_filesystem -lboost_iostreams -lrt -z noexecstack -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ
 ./Math/FixedVec.h: In member function ‘FixedVec<T, L> FixedVec<T, L>::operator+(const FixedVec<T, L>&) const [with T = gf2n_long; int L = 2]’:
 ./Math/FixedVec.h:170:19: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   170 |     FixedVec<T, L>operator+(const FixedVec<T, L>& other) const
@@ -2778,16 +2784,10 @@ In member function ‘edabit<T> edabitvec<T>::next() [with T = MaliciousRep3Shar
 ./Protocols/Rep3Share.h:58:14: note: parameter passing for argument of type ‘RepShare<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
    58 |     RepShare operator*(const U& other) const
       |              ^~~~~~~~
-In member function ‘edabit<T> edabitvec<T>::next() [with T = Rep3Share<gf2n_long>]’,
-    inlined from ‘void BufferPrep<T>::get_edabit_no_count(bool, int, edabit<T>&) [with T = Rep3Share<gf2n_long>]’ at ./Protocols/ReplicatedPrep.hpp:1302:23:
-./Protocols/edabit.h:80:26: note: parameter passing for argument of type ‘Rep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
-   80 |         res.first = a.pop();
-      |                     ~~~~~^~
 ./Processor/Input.hpp: In static member function ‘static void InputBase<T>::input(SubProcessor<T>&, const ArgVector&, int) [with U = IntInput<gf2n_long>; T = MaliciousRep3Share<gf2n_long>]’:
 ./Processor/Input.hpp:267:6: note: parameter passing for argument of type ‘MaliciousRep3Share<gf2n_long>’ when C++17 is enabled changed to match C++14 in GCC 10.1
   267 | void InputBase<T>::input(SubProcessor<T>& Proc,
       |      ^~~~~~~~~~~~
-g++ -o mal-rep-bmr-party.x -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC Machines/BMR/mal-rep-bmr-party.o BMR/AndJob.o BMR/CommonParty.o BMR/GarbledGate.o BMR/Key.o BMR/Party.o BMR/Register.o BMR/TrustedParty.o BMR/msg_types.o BMR/proto_utils.o BMR/network/Client.o BMR/network/Node.o BMR/network/Server.o BMR/network/utils.o libSPDZ.so -lboost_thread  -lgmpxx -lgmp -lsodium   -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ/local/lib -L/home/ubuntu/MP-SPDZ/local/lib -lssl -lcrypto -lboost_filesystem -lboost_iostreams -lrt -z noexecstack -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ
 ./Processor/Instruction.hpp: In member function ‘void Program::execute_with_errors(Processor<sint, sgf2n>&) const [with sint = Rep3Share<gfp_<0, 1> >; sgf2n = Rep3Share<gf2n_long>]’:
 ./Processor/Instruction.hpp:1513:6: note: parameter passing for argument of type ‘FixedVec<gf2n_long, 2>’ when C++17 is enabled changed to match C++14 in GCC 10.1
  1513 | void Program::execute_with_errors(Processor<sint, sgf2n>& Proc) const
@@ -5240,16 +5240,21 @@ In member function ‘edabit<T> edabitvec<T>::next() [with T = Rep3Share<gf2n_lo
       |                     ~~~~~^~
 g++ -o malicious-rep-field-party.x -DNO_AVX_OT -I./local/include -march=armv8.2-a+crypto  -g -Wextra -Wall -O3 -I. -I./deps -pthread    -DUSE_GF2N_LONG '-DPREP_DIR="Player-Data/"' '-DSSL_DIR="Player-Data/"'  -std=c++20 -Wno-overloaded-virtual  -fPIC Machines/malicious-rep-field-party.o libSPDZ.so -lgmpxx -lgmp -lsodium   -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ/local/lib -L/home/ubuntu/MP-SPDZ/local/lib -lssl -lcrypto -lboost_filesystem -lboost_iostreams -lrt -z noexecstack -Wl,-rpath -Wl,/home/ubuntu/MP-SPDZ libSPDZ.so
 Setting up SSL for 3 parties
-..+.+..+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*..+.+........+....+........+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*....+......+........+...+...+...............+....+.....+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-.........+..+......+.............+..+.......+...+.....+....+...+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.......+.......+.....+.........+...+...+.........+...+.+..+...+.........+..........+..+....+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*......+....+........+.+......+.........+...............+..............+.+.................+...+....+...+...+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+...+.........+.+...........+....+.....+.+..............+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.....+.+.....+.+...............+.....+.......+.....+.+......+........+......+.+...............+...+...........+.+..............+.+.....+...+......+.+......+.....+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.+.+..+....+........+...+.......+..+.+.........+.........+......+...+..+......+.........+....+.....+............+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+...+...+..+......+......+...+.+.....+.+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.+...........+....+......+........+.+..+.......+..+.+...........................+........+....+...+.....+.+............+.....+...+.+........+................+.........+..+.+..............+....+...........+....+..+.......+..+...+.+......+.........+..+....+..............+..........+..+...+.+...+..+...+..........+..+................+...+..+.............+......+...........+....+....................+...+...+...+.+...+........+...+.......+........+............+............+...+...+.......+..+...+...+....+..................+..+.+.....+....+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 -----
-.+.....+....+........+............+.+..+....+......+..+......+.+........+.+......+......+...+......+......+..+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*..+...+.+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*..+.+..+.......+...........+...+....+...+..+.+.....+................+.....+.+..+......+......+.+..+..........+........+...+..........+...........+....+..+...............+...+.......+..+.+...........+...+......+......+.+.....+.........+.............+...+..+............+....+..+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-.+.....+.+......+...+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.....+......+.......+..+.+........+....+..+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*...+..........+..............+.......+...+..............+...+..........+..+...............+.+......+.....+....+.....+....+.................+.............+..+....+...............+.........+...+...+..+.......+..+...+......+...............+.........+......+....+...+...+..............+.......+..............+.+........+.+...........+.+..+......+......+....+...........+.............+..+.............+.................+....+..+...+.......+........+....+...+........+.+........+...+.......+...+.....+....+...+...+.....+...+......+...............+...+.+..+............+.......+.....+....+.....+.+...........+...+.+.....+.........+.+...+...+.....+...............+..................+...............+....+.....+......+...........................+....+.........+..+.......+..+...+..........+............+...+........+...+........................+.+......+......+........+......+......+.......+..+.+............+.....+.+......+..............+......+.+..+.....................+......+......+.......+..+.+...+..+...............+....+..............+.+......+.....+....+...+......+.....+.+......+..+............+...+......+....+..+....+...........+...+..................+.......+...........+...............+.+.....+..........+......+..+...+....+......+.....+.......+........+.......+........+...+................+.....+...+......+.+.....+.+...+..+............+...+....+.......................+.......+.....+...+...+...+.+......+...+......+......+..+.+......+......+..............+...+...+...+....+...+..................+...............+..+.......+......+..+...+.........+.............+..+...+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.............+......+.......+...+...+.........+..+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.+.............+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*................+...+.....+.+..+...+.+......+...+......+........+.+.....+..........+..+.......+..+.+.....+....+...+..+.+.....+..........+.........+.........+..+..........+.....+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.+.....+.........+.+...+......+...........+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.+....+..+...+....+..+.+.....+...+.......+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*..........................+....................+.......+...+.....+....+..+.+..+............+......+............+..........+...+........+.........+...+.............+......+........+............+...+......+......+....+.....+.+.....+...+...+...+.......+..................+......+.....+....+..+...+.+......+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 -----
-.....+.....+...+................+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.......+.......+...............+.....+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.+...+.....+...+..........+...+...............+.....+...............+.+.........+.....+......+.+..................+.....+....+.....+......+.+...+..+.+...............+.....+.......+..+.+............+.................+....+......+...+......+......+...+.....+......+...............+.+......+.....+.......+.....+...+.........+....+..+...+......+.+...+...............+.....+...............+....+...+.........+.....+.+...+......+....................+....+.....+.........+...+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-..+..........+...+.....+....+..+...+...+............+.+............+..+.+..+.......+......+...........+.........+.+........+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.....+..........+..+...+....+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.+..+...+....+........+.............+........+.+...............+........+.+..+....+.....+...+...+.......+...+..............+.............+..+...+.+.....+....+........+..........+..+.+...........+.+...+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+......+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.....+.....+.+...+..+.............+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.....+...+.....+..........+..+.........+.+...........+...+.+...............+.....+......+.........+.+...+..+.......+..+...+.+..+............+.......+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+.+.............+........+.+...........+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.+...+...+.+......+...+...........+...+......+...............+....+............+...+...+.....+.......+...+..+..........+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*........+........+...+....+...+.....+.............+.........+..............+......+.+..+..........+..+...............+....+.........+..+.........+............+..........+..+......+.+.....+................+..............+.+...+.....+......+.+.........+...................................+.+..+..................+.........+.+.........+.....+....+............+...+..+...............+.............+..+....+...+.....+......+......+....+..+....+......+........+...................+......+..+.............+..+...........................+.+......+.....+...+.+......+...+...+.....+...+.+......+...+.........+.....+.........................+...+..+.+..+...+..........+...........+.+..............+.+.....+....+.....+....+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 -----
-rm: cannot remove 'Player-Data/*.0': No such file or directory
+removed 'Player-Data/0c19e31f.0'
+removed 'Player-Data/16036ff6.0'
+removed 'Player-Data/690ad341.0'
+removed 'Player-Data/722e178a.0'
+removed 'Player-Data/786af600.0'
+removed 'Player-Data/98ab66c2.0'
 Doing Player-Data
 link P0.pem -> 690ad341.0
 link P0.pem -> 16036ff6.0
@@ -5262,8 +5267,9 @@ warn: It looks like you have an existing rustup settings file at:
 warn: /home/ubuntu/.rustup/settings.toml
 warn: Rustup will install the default toolchain as specified in the settings file,
 warn: instead of the one inferred from the default host triple.
+warn: Updating existing toolchain, profile choice will be ignored
 
-  stable-aarch64-unknown-linux-gnu installed - rustc 1.98.0 (88d9e12ae 2026-08-18)
+  stable-aarch64-unknown-linux-gnu unchanged - rustc 1.98.0 (88d9e12ae 2026-08-18)
 
 
 Rust is installed now. Great!

@@ -4,6 +4,8 @@
 # Phases, in order:
 #   mesh    WireGuard between all four nodes (10.99.0.1 .. 10.99.0.4)
 #   build   clone the repo, build MP-SPDZ, start each member agent
+#           re-running 'build' also re-syncs: bootstrap.sh pulls the repo
+#           and restarts the agent, and the compile is a near no-op
 #   certs   one set of TLS certificates, generated once and distributed
 #   ping    latency matrix over the mesh, the path the MPC takes
 #   bench   raw per-primitive benchmarks
@@ -12,6 +14,9 @@
 # Usage:
 #   sh wan/run-wan.sh              run every phase
 #   sh wan/run-wan.sh mesh build   run only the named phases
+#
+# Re-run 'build' after pushing any change to poc/ or programs/, otherwise
+# the nodes keep running the checkout they bootstrapped with.
 #
 # The mesh is a correctness requirement, not tidiness. MP-SPDZ has every
 # party dial the coordination server as a client, party 0 included
