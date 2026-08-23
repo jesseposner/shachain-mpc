@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+
+# Live deployment state: instance IDs and public IPs, written by
+# wan/launch-instances.sh and removed by wan/teardown.sh.
+wan/nodes.txt
+*.pem
