@@ -79,11 +79,12 @@ belong to the authorization layer.
 
 ## Open questions
 
-- Output re-sharing: chaining BMR sessions (or feeding a BMR cold start into a
-  Rep3 steady state) needs the output as an authenticated Boolean sharing
-  rather than revealed labels. XOR-masking with per-party random inputs gives
-  the sharing; authenticating it against a malicious party still needs a
-  design.
+- Output re-sharing: demonstrated in the PoC. The cold start runs under
+  mal-rep-bmr with outputs revealed only as XOR-masked values (each active
+  member inputs a fresh mask), and the field engine consumes the same masked
+  tuples for every later step. Authenticating member-held masks against a
+  malicious party is part of the authorization layer, as with all volatile
+  state.
 - Garbled-package integrity: a stored 1.6 GB package must be integrity-bound
   to the channel and quorum that will consume it.
 - A WAN run to confirm the three-round online phase behaves as computed.

@@ -158,7 +158,7 @@ def handle_step(req):
         os.remove(persist)
     cmd = [os.path.join(STATE.mpspdz, req['binary']),
            str(slot), req['name'], '-h', req['party0_host'],
-           '-pn', str(req['port']), '-P', str(Q)]
+           '-pn', str(req['port'])] + req.get('args', [])
     out = subprocess.run(cmd, cwd=STATE.workdir, capture_output=True,
                          text=True, timeout=600)
     if out.returncode != 0:

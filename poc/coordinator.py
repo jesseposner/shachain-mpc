@@ -101,13 +101,14 @@ class Coordinator:
             post(url, '/setup', {'index': i, 'roster': roster,
                                  'originate': originate[i], 'certs': certs})
 
-    def compile_step(self, plan):
+    def compile_step(self, plan, domain='field'):
         self.nonce += 1
         name = f'shachain_engine-{self.nonce}'
         plan_path = os.path.join(self.mpspdz, 'engine-plan.json')
         json.dump(plan, open(plan_path, 'w'))
         env = dict(os.environ, ENGINE_PLAN=plan_path)
-        subprocess.run(['./compile.py', '-P', str(Q), '-X', 'shachain_engine',
+        flags = (['-P', str(Q), '-X'] if domain == 'field' else ['-B', '256'])
+        subprocess.run(['./compile.py'] + flags + ['shachain_engine',
                         str(self.nonce)],
                        cwd=self.mpspdz, env=env, check=True,
                        capture_output=True)
@@ -120,8 +121,13 @@ class Coordinator:
             open(os.path.join(self.mpspdz, sch), 'rb').read()).decode()
         return name, files
 
-    def run_step(self, plan, spec):
-        name, files = self.compile_step(plan)
+    def run_step(self, plan, spec, protocol='field'):
+        if protocol == 'bmr':
+            name, files = self.compile_step(plan, domain='binary')
+            binary, args = 'mal-rep-bmr-party.x', ['-N', '3', '-O']
+        else:
+            name, files = self.compile_step(plan, domain='field')
+            binary, args = 'malicious-rep-field-party.x', ['-P', str(Q)]
         self.port += 1
         party0_host = self.mpc_hosts[self.public['quorum'][0]]
         results = [None] * QUORUM
@@ -132,8 +138,7 @@ class Coordinator:
                 results[slot] = post(url, '/step', {
                     'name': name, 'files': files, 'plan': plan, 'spec': spec,
                     'slot': slot, 'party0_host': party0_host,
-                    'port': self.port,
-                    'binary': 'malicious-rep-field-party.x'})
+                    'port': self.port, 'binary': binary, 'args': args})
             except Exception as e:
                 errors.append(f'slot {slot}: {e}')
 
@@ -171,9 +176,9 @@ class Coordinator:
 
     # -- lifecycle --------------------------------------------------------
 
-    def init_channel(self):
+    def init_channel(self, protocol='field'):
         plan, spec, out_vids = self.pl.init_plan()
-        regs, _, _ = self.run_step(plan, spec)
+        regs, _, _ = self.run_step(plan, spec, protocol=protocol)
         self.pl.store_masked(out_vids, regs)
 
     def restore(self):
@@ -262,6 +267,10 @@ def main():
     ap.add_argument('--updates', type=int, default=6)
     ap.add_argument('--after', type=int, default=3)
     ap.add_argument('--mpspdz', default=os.path.expanduser('~/src/MP-SPDZ'))
+    ap.add_argument('--cold-start', choices=['bmr', 'field'], default='bmr',
+                    help='protocol for the 48-edge channel open: bmr runs it '
+                         'as a jointly garbled circuit (3 online rounds) and '
+                         'hands the masked frontier to the field engine')
     args = ap.parse_args()
 
     procs, workdirs = [], []
@@ -300,9 +309,11 @@ def main():
         coord.setup()
         oracle = local_oracle_seed(workdirs) if args.local else None
 
-        print('== channel open: 48-edge cold start')
+        label = ('jointly garbled BMR circuit' if args.cold_start == 'bmr'
+                 else 'replicated MPC')
+        print(f'== channel open: 48-edge cold start via {label}')
         t = time.time()
-        coord.init_channel()
+        coord.init_channel(protocol=args.cold_start)
         print(f'   cold start {time.time() - t:.1f}s')
 
         def do_update():
