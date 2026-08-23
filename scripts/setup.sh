@@ -19,11 +19,13 @@ fi
 cd "$MPSPDZ"
 git checkout -q "$MPSPDZ_COMMIT"
 git submodule update --init --depth 1 Programs/Circuits
-if ! git apply --check "$HERE/patches/mp-spdz-clang21.patch" 2>/dev/null; then
-  echo "patch already applied or does not apply cleanly; continuing"
-else
-  git apply "$HERE/patches/mp-spdz-clang21.patch"
-fi
+for patch in mp-spdz-clang21 mp-spdz-bmr-phase-timing; do
+  if git apply --check "$HERE/patches/$patch.patch" 2>/dev/null; then
+    git apply "$HERE/patches/$patch.patch"
+  else
+    echo "$patch already applied or does not apply cleanly; continuing"
+  fi
+done
 cat > CONFIG.mine <<CFG
 CXX = /usr/bin/g++
 ARCH = -march=armv8.2-a+crypto

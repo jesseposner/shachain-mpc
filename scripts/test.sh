@@ -10,7 +10,7 @@ cd "$MPSPDZ"
 fail=0
 check() { # proto seed K [runtime-args]
   proto=$1; seed=$2; k=$3; shift 3
-  case $proto in replicated|mal-rep-bin) b2a=0;; *) b2a=1;; esac
+  case $proto in replicated|mal-rep-bin|rep-bmr|mal-rep-bmr) b2a=0;; *) b2a=1;; esac
   python3 "$HERE/scripts/input.py" . "$seed"
   out=$(Scripts/$proto.sh "shachain_step-$k-1-$b2a-1" "$@" 2>&1)
   got_hash=$(echo "$out" | sed -n 's/^Reg\[[0-9]*\] = 0x\([0-9a-f]*\).*/\1/p' | head -1)
@@ -34,6 +34,8 @@ for K in 0 1 3; do
   ./compile.py -P $Q -X shachain_step $K 1 1 1 >/dev/null
   check replicated $ONES $K
   check mal-rep-bin $ONES $K
+  check rep-bmr $ONES $K -O
+  check mal-rep-bmr $ONES $K -O
   check rep-field $ONES $K -P $Q
   check mal-rep-field $ONES $K -P $Q
 done

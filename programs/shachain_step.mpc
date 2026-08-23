@@ -12,6 +12,9 @@
 #   N      independent chains evaluated in parallel       default 1
 #   B2A    1 = include Boolean-to-arithmetic conversion    default 1
 #   CHECK  1 = reveal results for correctness checking     default 0
+#   SEP    1 = feed the N chains as separate inputs rather  default 0
+#              than one vectorised input (needed for BMR, which
+#              lacks vectorised input instructions)
 #
 # Conventions:
 #   The bit vector x.v uses v[k] = bit (7 - k % 8) of byte k // 8 (MSB first
@@ -26,6 +29,7 @@ K = int(program.args[1]) if len(program.args) > 1 else 1
 N = int(program.args[2]) if len(program.args) > 2 else 1
 B2A = int(program.args[3]) if len(program.args) > 3 else 1
 CHECK = int(program.args[4]) if len(program.args) > 4 else 0
+SEP = int(program.args[5]) if len(program.args) > 5 else 0
 
 SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
@@ -65,26 +69,38 @@ def nonzero(bits):
 
 
 t256 = sbitvec.get_type(256)
-x = t256.get_input_from(0, size=N) if N > 1 else t256.get_input_from(0)
+if SEP:
+    xs = [t256.get_input_from(0) for _ in range(N)]
+else:
+    xs = [t256.get_input_from(0, size=N) if N > 1 else t256.get_input_from(0)]
+
+
+def walk(x):
+    for b in BITS:
+        v = list(x.v)
+        k = bolt_flip_index(b)
+        v[k] = ~v[k]
+        h = sha256(sbitvec.from_vec(v))
+        x = sbitvec.from_vec(list(reversed(h.v)))
+    return x
+
 
 start_timer(1)
-for b in BITS:
-    v = list(x.v)
-    k = bolt_flip_index(b)
-    v[k] = ~v[k]
-    h = sha256(sbitvec.from_vec(v))
-    x = sbitvec.from_vec(list(reversed(h.v)))
+xs = [walk(x) for x in xs]
 stop_timer(1)
 
-s_bits = lsb_first(x)
+s_bits = lsb_first(xs[0])
 
 start_timer(2)
-valid = less_than_const(s_bits, SECP256K1_ORDER) & nonzero(s_bits)
+valids = [less_than_const(lsb_first(x), SECP256K1_ORDER) & nonzero(lsb_first(x))
+          for x in xs]
+valid = valids[0]
 stop_timer(2)
 
 if B2A:
     start_timer(3)
-    s = sint.bit_compose(s_bits)
+    ss = [sint.bit_compose(lsb_first(x)) for x in xs]
+    s = ss[0]
     stop_timer(3)
 
 if CHECK:

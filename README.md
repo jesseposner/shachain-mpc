@@ -32,7 +32,7 @@ exactly Iceberg's t=2 signing quorum of 2t-1 members):
 |---|---|---|
 | `replicated-bin` / `replicated-field` | semi-honest | circuit depth |
 | `malicious-rep-bin` / `malicious-rep-field` | malicious | circuit depth |
-| `rep-bmr` / `mal-rep-bmr` | semi-honest / malicious | constant online (garbling precomputable) |
+| `rep-bmr` / `mal-rep-bmr` | semi-honest / malicious | one online round (garbling precomputable) |
 
 Correctness is checked against a plaintext BOLT #3 reference (`scripts/ref.py`)
 under every protocol, including the invalid-scalar branch: `scripts/test.sh`.
@@ -59,9 +59,13 @@ Reading:
 - So derivation has to run as background precomputation with a lookahead
   buffer. What remains on the hot path is the B2A conversion and a scalar
   opening.
-  Channel open is the hard case, since the 48-edge cold start has to finish
-  before funding, and it is the reason to look at constant-round garbled
-  circuits (BMR) next.
+- Channel open looked like the hard case, since the 48-edge cold start has to
+  finish before funding. The BMR measurements
+  ([results/bmr-notes.md](results/bmr-notes.md)) resolve it: with pre-garbled
+  circuits the whole cold start runs in one online round plus ~0.5 s of local
+  evaluation, for a garbling package of ~1.6 GB per party prepared before the
+  channel exists. Steady state stays on Rep3; BMR covers channel open and
+  quorum changes.
 
 ## Layout
 

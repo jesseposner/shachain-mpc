@@ -1,0 +1,25 @@
+diff --git a/BMR/RealProgramParty.hpp b/BMR/RealProgramParty.hpp
+index 02d5512..e37867f 100644
+--- a/BMR/RealProgramParty.hpp
++++ b/BMR/RealProgramParty.hpp
+@@ -135,6 +135,8 @@ RealProgramParty<T>::RealProgramParty(int argc, const char** argv) :
+ 		garble();
+ 		try
+ 		{
++			size_t sent_before = P->total_comm().sent;
++			double t_before = this->online_timer.elapsed();
+ 			this->online_timer.start();
+ 			if (one_shot)
+ 				this->start_online_round();
+@@ -145,6 +147,11 @@ RealProgramParty<T>::RealProgramParty(int argc, const char** argv) :
+ 						this->machine, this->dynamic_memory);
+ 			}
+ 			this->online_timer.stop();
++			cerr << "BMR online phase: " << (this->online_timer.elapsed() - t_before)
++					<< " seconds, " << (P->total_comm().sent - sent_before) * 1e-6
++					<< " MB sent (this party)" << endl;
++			cerr << "BMR garbling phase: " << (this->timer.elapsed() - this->online_timer.elapsed())
++					<< " seconds cumulative" << endl;
+ 		}
+ 		catch (needs_cleaning& e)
+ 		{
