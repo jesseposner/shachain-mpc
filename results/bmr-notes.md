@@ -57,6 +57,26 @@ chain.
 - Quorum change: same pattern as channel open, since RESTORE from the seed is
   also a bounded chain of edges (at most 48).
 
+## Why no cut-and-choose
+
+Review question (Paul): does the garbling trick need cut-and-choose? No, and
+the reason is worth recording. Cut-and-choose fixes the classic Yao problem of
+a single malicious garbler, whom the evaluator cannot audit: garble many
+copies, open a random subset to check, evaluate the rest, paying a
+statistical-security multiple in every cost. Here nobody garbles alone. In
+BMR the garbled tables are themselves computed inside an actively secure MPC
+among the custodians (MP-SPDZ's `mal-rep-bmr` garbles over malicious
+replicated GF(2^128) sharing, following the SPDZ-BMR line, eprint 2017/981),
+so a corrupt minority cannot substitute a wrong circuit or learn labels; it
+can only force an abort. Correct-garbling is inherited from the garbling MPC's
+own malicious security, with no replication factor. The claim leans on two
+conditions: the garbling run must itself be the malicious protocol
+(semi-honest `rep-bmr` garbling would reopen the question), and each garbled
+package is strictly one-time-use, since evaluating one circuit on two
+different inputs leaks. Single-use enforcement and integrity of the stored
+package (a MAC or hash committed at garbling time, checked before evaluation)
+belong to the authorization layer.
+
 ## Open questions
 
 - Output re-sharing: chaining BMR sessions (or feeding a BMR cold start into a

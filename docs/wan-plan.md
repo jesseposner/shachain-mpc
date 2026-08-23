@@ -14,8 +14,12 @@ Goal: turn the rounds x RTT extrapolation into data. The claims to test:
 
 ## Topology
 
-Three c7g.2xlarge (Graviton, 8 vCPU), Ubuntu 24.04 arm64, one per region:
-us-east-1 / us-west-2 / eu-west-1 (max leg ~130 ms RTT). AMIs resolve via SSM:
+Four c7g.2xlarge (Graviton, 8 vCPU), Ubuntu 24.04 arm64, across regions:
+us-east-1 / us-west-2 / eu-west-1, plus a fourth (eu-west-1 or us-east-2) as
+the standby member. This is Iceberg's 2-of-4: threshold t=2, quorum 2t-1=3,
+group n=4. The MPC session runs Rep3 among whichever three are online; the
+fourth exists to demonstrate quorum change. Max leg ~130 ms RTT. AMIs resolve
+via SSM:
 `/aws/service/canonical/ubuntu/server/24.04/stable/current/arm64/hvm/ebs-gp3/ami-id`.
 
 Security group per region (temporary): TCP 22 and 5000-5200 plus ICMP, open
@@ -37,7 +41,11 @@ wide for the benchmark's lifetime, deleted at teardown. Import one SSH key as
    ~5,400 rounds, budget ~15 min; gives the K=48 online phase over WAN).
    Skip mal-rep-bin K=48 (77k rounds, hours) and mal-rep-bmr K=48 garbling
    (81k rounds); the model covers them once the K=1 numbers validate it.
-6. Record results to `results/wan-<date>.md` with the ping matrix alongside
+6. Quorum change: stop one member of the active three, form the quorum with
+   the standby, RESTORE the frontier from the seed sharing (CONTRIB input as
+   stand-in), and verify the next leaves match the reference. This measures
+   the recovery story end to end, not just single-session throughput.
+7. Record results to `results/wan-<date>.md` with the ping matrix alongside
    the predicted-vs-measured table. Terminate instances, delete security
    groups and key pairs.
 
