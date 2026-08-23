@@ -55,11 +55,13 @@ Reading:
 - Round complexity dominates: ~1,600 sequential rounds per edge (AND-depth of
   SHA-256 with ripple-carry adders) means ~1,600 x RTT over a network,
   seconds per edge in one region, minutes for the 48-edge cold start across
-  regions. Loopback hides this entirely.
-- Therefore derivation must be background precomputation with a lookahead
-  buffer; the hot path is only the B2A conversion and a scalar opening. Channel
-  open (which needs the 48-edge cold start before funding) is the hard case and
-  the motivation for looking at constant-round garbled circuits (BMR) next.
+  regions. Loopback hides this.
+- So derivation has to run as background precomputation with a lookahead
+  buffer. What remains on the hot path is the B2A conversion and a scalar
+  opening.
+  Channel open is the hard case, since the 48-edge cold start has to finish
+  before funding, and it is the reason to look at constant-round garbled
+  circuits (BMR) next.
 
 ## Layout
 
@@ -112,9 +114,11 @@ persist across sessions.
 Point export from the Z_q sharing (local `share*G` plus a replicated
 consistency check), the release-authorization layer binding revocation to the
 channel state machine, quorum changes and share refresh, t > 2 (Shamir among
-the 2t-1 quorum), and network runs. See the discussion of offline members and
-of single-party garbled-circuit evaluation in the project notes before drawing
-conclusions about BMR.
+the 2t-1 quorum), and network runs. One caveat for the BMR direction: a single
+party can evaluate a precomputed garbled circuit, but it only obtains output
+labels, and decoding them needs shares held by a quorum, so single-party
+evaluation moves the work without moving the knowledge. Release of a secret
+still requires a quorum and the authorization layer.
 
 ## License
 
