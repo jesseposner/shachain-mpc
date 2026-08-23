@@ -32,10 +32,22 @@ exactly Iceberg's t=2 signing quorum of 2t-1 members):
 |---|---|---|
 | `replicated-bin` / `replicated-field` | semi-honest | circuit depth |
 | `malicious-rep-bin` / `malicious-rep-field` | malicious | circuit depth |
-| `rep-bmr` / `mal-rep-bmr` | semi-honest / malicious | one online round (garbling precomputable) |
+| `rep-bmr` / `mal-rep-bmr` | semi-honest / malicious | three online rounds (garbling precomputable) |
 
-Correctness is checked against a plaintext BOLT #3 reference (`scripts/ref.py`)
-under every protocol, including the invalid-scalar branch: `scripts/test.sh`.
+Correctness is checked four ways:
+
+- `scripts/ref.py selftest`: the reference implementation against the five
+  official BOLT #3 test vectors;
+- `scripts/test.sh`: MPC output against the reference under every protocol,
+  including the invalid-scalar branch (19 cases);
+- `scripts/ldk_check.sh`: secrets derived by the maliciously secure MPC fed to
+  LDK's shachain verifier (rust-lightning `CounterpartyCommitmentSecrets`),
+  which accepts the sequence, rejects every single-byte corruption, and
+  re-derives stored secrets;
+- the same script runs the point-export harness
+  (`scripts/point_export.py`): each party turns its replicated Z_q share into
+  a curve point, replicated pairs are cross-checked by point equality, and
+  the combined P equals s*G, with a corrupted-share run aborting as it must.
 
 ## Results (Apple M4 Max, 3 parties on loopback)
 
@@ -62,10 +74,10 @@ Reading:
 - Channel open looked like the hard case, since the 48-edge cold start has to
   finish before funding. The BMR measurements
   ([results/bmr-notes.md](results/bmr-notes.md)) resolve it: with pre-garbled
-  circuits the whole cold start runs in one online round plus ~0.5 s of local
-  evaluation, for a garbling package of ~1.6 GB per party prepared before the
-  channel exists. Steady state stays on Rep3; BMR covers channel open and
-  quorum changes.
+  circuits the whole cold start runs in three online rounds plus ~0.5 s of
+  local evaluation, for a garbling package of ~1.6 GB per party prepared
+  before the channel exists. Steady state stays on Rep3; BMR covers channel
+  open and quorum changes.
 
 ## Layout
 
@@ -74,9 +86,12 @@ programs/shachain_step.mpc   the MPC program (K sequential edges, N parallel cha
 scripts/setup.sh             clone, patch and build MP-SPDZ (macOS tested)
 scripts/test.sh              correctness against the plaintext reference, all protocols
 scripts/bench.sh             benchmark table -> results/<host>-<date>.md
-scripts/ref.py               plaintext BOLT #3 reference
+scripts/ldk_check.sh         MPC secrets -> LDK verifier; point-export harness
+scripts/point_export.py      replicated shares -> published P = s*G with cross-checks
+scripts/ref.py               plaintext BOLT #3 reference (selftest = official vectors)
 scripts/input.py             writes party 0's input file in the program's bit convention
-patches/                     MP-SPDZ fixes for Xcode clang 21
+ldk-check/                   Rust harness around rust-lightning's shachain store
+patches/                     MP-SPDZ fixes for Xcode clang 21 and BMR phase timing
 results/                     measurements
 ```
 
@@ -115,10 +130,9 @@ persist across sessions.
 
 ## Not covered here
 
-Point export from the Z_q sharing (local `share*G` plus a replicated
-consistency check), the release-authorization layer binding revocation to the
-channel state machine, quorum changes and share refresh, t > 2 (Shamir among
-the 2t-1 quorum), and network runs. One caveat for the BMR direction: a single
+The release-authorization layer binding revocation to the channel state
+machine, quorum changes and share refresh, and network runs
+(see docs/wan-plan.md). One caveat for the BMR direction: a single
 party can evaluate a precomputed garbled circuit, but it only obtains output
 labels, and decoding them needs shares held by a quorum, so single-party
 evaluation moves the work without moving the knowledge. Release of a secret

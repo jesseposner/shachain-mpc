@@ -1,0 +1,8 @@
+[package]
+name = "ldk-check"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lightning = "0.1"
+hex = "0.4"

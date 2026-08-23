@@ -30,12 +30,19 @@ N = int(program.args[2]) if len(program.args) > 2 else 1
 B2A = int(program.args[3]) if len(program.args) > 3 else 1
 CHECK = int(program.args[4]) if len(program.args) > 4 else 0
 SEP = int(program.args[5]) if len(program.args) > 5 else 0
+IDX = int(program.args[6]) if len(program.args) > 6 else 0
+EXPORT = int(program.args[7]) if len(program.args) > 7 else 0
 
 SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
-# A path of right edges from the root, as in the 48-hash cold start. Which bit
-# is flipped does not affect cost: the flip is a free public negation.
-BITS = [47 - i for i in range(K)]
+# Which bits to flip, high to low. The default walks a path of right edges
+# from the root, as in the 48-hash cold start; which bit is flipped does not
+# affect cost, since the flip is a free public negation. With IDX >= 0 this
+# is exactly BOLT #3 generate_from_seed(seed, IDX).
+if IDX > 0:
+    BITS = [b for b in range(47, -1, -1) if (IDX >> b) & 1]
+else:
+    BITS = [47 - i for i in range(K)]
 
 
 def bolt_flip_index(b):
@@ -102,6 +109,9 @@ if B2A:
     ss = [sint.bit_compose(lsb_first(x)) for x in xs]
     s = ss[0]
     stop_timer(3)
+    if EXPORT:
+        # Known calibration value first, then the secret share.
+        sint.write_to_file([sint(1), s], position=0)
 
 if CHECK:
     sbitvec.from_vec(s_bits).reveal().print_reg()

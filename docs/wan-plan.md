@@ -8,8 +8,9 @@ Goal: turn the rounds x RTT extrapolation into data. The claims to test:
 1. Rep3 malicious, one edge: predicted ~1,600 x slowest-leg RTT.
 2. B2A malicious: 31 rounds, predicted a few seconds cross-region.
 3. Batched N=100: rounds barely grow, so amortized throughput survives WAN.
-4. BMR one-shot online phase: predicted one round trip + ~10 ms/edge local,
-   independent of RTT. This is the headline claim.
+4. BMR one-shot online phase: measured three rounds on loopback; predicted
+   three round trips + ~10 ms/edge local, independent of K. This is the
+   headline claim.
 
 ## Topology
 

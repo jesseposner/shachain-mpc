@@ -7,6 +7,7 @@ HERE=$(cd "$(dirname "$0")/.." && pwd)
 Q=115792089237316195423570985008687907852837564279074904382605163141518161494337
 ln -sf "$HERE/programs/shachain_step.mpc" "$MPSPDZ/Programs/Source/"
 cd "$MPSPDZ"
+python3 "$HERE/scripts/ref.py" selftest
 fail=0
 check() { # proto seed K [runtime-args]
   proto=$1; seed=$2; k=$3; shift 3

@@ -1,23 +1,30 @@
 diff --git a/BMR/RealProgramParty.hpp b/BMR/RealProgramParty.hpp
-index 02d5512..e37867f 100644
+index 02d5512..ea8f6d6 100644
 --- a/BMR/RealProgramParty.hpp
 +++ b/BMR/RealProgramParty.hpp
-@@ -135,6 +135,8 @@ RealProgramParty<T>::RealProgramParty(int argc, const char** argv) :
+@@ -135,6 +135,11 @@ RealProgramParty<T>::RealProgramParty(int argc, const char** argv) :
  		garble();
  		try
  		{
 +			size_t sent_before = P->total_comm().sent;
++			size_t rounds_before = 0;
++			for (auto& x : P->total_comm())
++				rounds_before += x.second.rounds;
 +			double t_before = this->online_timer.elapsed();
  			this->online_timer.start();
  			if (one_shot)
  				this->start_online_round();
-@@ -145,6 +147,11 @@ RealProgramParty<T>::RealProgramParty(int argc, const char** argv) :
+@@ -145,6 +150,15 @@ RealProgramParty<T>::RealProgramParty(int argc, const char** argv) :
  						this->machine, this->dynamic_memory);
  			}
  			this->online_timer.stop();
++			size_t rounds_after = 0;
++			for (auto& x : P->total_comm())
++				rounds_after += x.second.rounds;
 +			cerr << "BMR online phase: " << (this->online_timer.elapsed() - t_before)
 +					<< " seconds, " << (P->total_comm().sent - sent_before) * 1e-6
-+					<< " MB sent (this party)" << endl;
++					<< " MB sent, " << (rounds_after - rounds_before)
++					<< " rounds (this party)" << endl;
 +			cerr << "BMR garbling phase: " << (this->timer.elapsed() - this->online_timer.elapsed())
 +					<< " seconds cumulative" << endl;
  		}
