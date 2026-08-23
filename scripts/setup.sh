@@ -41,6 +41,9 @@ esac
 if [ "$(uname)" = Darwin ]; then
   echo 'CXX = /usr/bin/g++' >> CONFIG.mine
   echo 'MY_CFLAGS = -Wno-deprecated-literal-operator' >> CONFIG.mine
+else
+  # MP-SPDZ's CONFIG defaults to clang++, which Ubuntu does not ship
+  echo 'CXX = g++' >> CONFIG.mine
 fi
 
 make -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu)" \
