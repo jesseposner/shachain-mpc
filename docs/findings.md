@@ -40,12 +40,13 @@ with some single party.
    precomputation with a lookahead buffer. The per-update hot path is then
    only the B2A conversion and a scalar opening (~5 ms, 31 rounds).
 
-4. **Channel open resolved by garbled circuits.** The 48-edge cold start,
-   which cannot be precomputed before the seed exists, runs under BMR with
-   pre-garbled circuits in three online rounds, 8.7 KB, and ~0.5 s of local
-   evaluation, independent of network latency; garbling is input-independent
-   at ~34 MB per edge per party and can happen before the channel exists
-   (`results/bmr-notes.md`).
+4. **Channel open resolved by garbled circuits.** The 48-edge cold start
+   cannot be computed before the seed exists, but its garbled circuit can:
+   we added package persistence to MP-SPDZ's BMR, and the measured flow is
+   garble+dump in advance (17 s, 0.21 GB per party on disk), then a fresh
+   process evaluates the package in 0.47 s, 8.7 KB, and two online rounds,
+   independent of network latency (`results/bmr-notes.md`). The distributed
+   PoC stockpiles the package at setup and opens the channel in 1.7 s.
 
 5. **Point export closes the pipeline.** From the replicated Z_q sharing,
    each party computes one curve point per share component locally; replicated

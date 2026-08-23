@@ -28,7 +28,8 @@ spawns four member agents on localhost and runs:
 
 ```
 == setup: dealing RSS summands member-to-member
-== channel open: 48-edge cold start via jointly garbled BMR circuit  23 s
+== pre-garbled channel-open package stockpiled      33 s, before the seed is used
+== channel open via stockpiled garbled package      1.7 s
 == steady state: 6 updates                          0.3-5 s each
 == crash: all volatile masks destroyed; member 2 offline
 == quorum change to [0, 1, 3] + RESTORE             92 hashes, 17.4 s

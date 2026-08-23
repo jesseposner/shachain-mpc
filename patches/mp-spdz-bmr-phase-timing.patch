@@ -1,9 +1,83 @@
+diff --git a/BMR/RealProgramParty.h b/BMR/RealProgramParty.h
+index 8a6bc58..941cef6 100644
+--- a/BMR/RealProgramParty.h
++++ b/BMR/RealProgramParty.h
+@@ -35,6 +35,10 @@ class RealProgramParty : public ProgramPartySpec<T>
+ 
+ 	vector<T> deltas;
+ 
++	string garble_dump_file, eval_load_file;
++	void dump_package(const string& path);
++	void load_package(const string& path);
++
+ 	Inputter* garble_inputter;
+ 	typename T::Protocol* garble_protocol;
+ 	vector<GarbleJob<T>> garble_jobs;
 diff --git a/BMR/RealProgramParty.hpp b/BMR/RealProgramParty.hpp
-index 02d5512..ea8f6d6 100644
+index 02d5512..5c41d9d 100644
 --- a/BMR/RealProgramParty.hpp
 +++ b/BMR/RealProgramParty.hpp
-@@ -135,6 +135,11 @@ RealProgramParty<T>::RealProgramParty(int argc, const char** argv) :
+@@ -52,11 +52,23 @@ RealProgramParty<T>::RealProgramParty(int argc, const char** argv) :
+ 			"-O", // Flag token.
+ 			"--oneshot" // Flag token.
+ 	);
++	opt.add("", 0, 1, 0, "Garble the whole program, dump the package "
++			"(suffix -P<player> added), and exit without evaluating.",
++			"-G", "--garble-dump");
++	opt.add("", 0, 1, 0, "Skip garbling; load a dumped package and only "
++			"run the online evaluation phase.", "-E", "--eval-load");
+ 	opt.parse(argc, argv);
+ 	int nparties;
+ 	opt.get("-N")->getInt(nparties);
+ 	this->check(nparties);
+ 	one_shot = opt.isSet("-O");
++	if (opt.isSet("-G"))
++	{
++		opt.get("-G")->getString(garble_dump_file);
++		one_shot = true;
++	}
++	if (opt.isSet("-E"))
++		opt.get("-E")->getString(eval_load_file);
+ 
+ 	NetworkOptions network_opts(opt, argc, argv);
+ 	OnlineOptions& online_opts = OnlineOptions::singleton;
+@@ -129,12 +141,46 @@ RealProgramParty<T>::RealProgramParty(int argc, const char** argv) :
+ 		this->spdz_wires[i].push_back({});
+ 
+ 	this->timer.reset();
++	if (eval_load_file.size())
++	{
++		load_package(eval_load_file + "-P" + to_string(online_opts.playerno));
++		size_t sent_before = P->total_comm().sent;
++		size_t rounds_before = 0;
++		for (auto& x : P->total_comm())
++			rounds_before += x.second.rounds;
++		this->online_timer.start();
++		this->start_online_round();
++		this->online_timer.stop();
++		size_t rounds_after = 0;
++		for (auto& x : P->total_comm())
++			rounds_after += x.second.rounds;
++		cerr << "BMR online phase (from package): "
++				<< this->online_timer.elapsed() << " seconds, "
++				<< (P->total_comm().sent - sent_before) * 1e-6 << " MB sent, "
++				<< (rounds_after - rounds_before) << " rounds (this party)"
++				<< endl;
++		next = GC::DONE_BREAK;
++	}
++	else
+ 	do
+ 	{
+ 		next = GC::TIME_BREAK;
  		garble();
++		if (garble_dump_file.size())
++		{
++			dump_package(garble_dump_file + "-P"
++					+ to_string(online_opts.playerno));
++			cerr << "BMR package dumped after "
++					<< this->timer.elapsed() << " seconds" << endl;
++			break;
++		}
  		try
  		{
 +			size_t sent_before = P->total_comm().sent;
@@ -14,7 +88,7 @@ index 02d5512..ea8f6d6 100644
  			this->online_timer.start();
  			if (one_shot)
  				this->start_online_round();
-@@ -145,6 +150,15 @@ RealProgramParty<T>::RealProgramParty(int argc, const char** argv) :
+@@ -145,6 +191,15 @@ RealProgramParty<T>::RealProgramParty(int argc, const char** argv) :
  						this->machine, this->dynamic_memory);
  			}
  			this->online_timer.stop();
@@ -30,3 +104,97 @@ index 02d5512..ea8f6d6 100644
  		}
  		catch (needs_cleaning& e)
  		{
+@@ -207,6 +262,93 @@ void RealProgramParty<T>::garble()
+ 	while (one_shot and next == GC::TIME_BREAK);
+ }
+ 
++namespace bmr_package
++{
++inline void put(ostream& os, const void* data, size_t size)
++{
++	os.write((const char*) &size, sizeof(size));
++	os.write((const char*) data, size);
++}
++
++inline size_t get(istream& is, vector<char>& data)
++{
++	size_t size = 0;
++	is.read((char*) &size, sizeof(size));
++	data.resize(size);
++	is.read(data.data(), size);
++	if (!is)
++		throw runtime_error("truncated BMR package");
++	return size;
++}
++}
++
++template<class T>
++void RealProgramParty<T>::dump_package(const string& path)
++{
++	ofstream os(path, ios::binary);
++	if (!os)
++		throw runtime_error("cannot write BMR package: " + path);
++	os.write((const char*) &this->delta, sizeof(this->delta));
++	for (auto* store : {&this->garbled_circuits, &this->input_masks_store,
++			&this->output_masks_store, &this->wire_storage})
++	{
++		vector<vector<char>> blobs;
++		ReceivedMsg msg;
++		while (store->pop(msg))
++			blobs.emplace_back(msg.data(), msg.data() + msg.size());
++		size_t n = blobs.size();
++		os.write((const char*) &n, sizeof(n));
++		for (auto& m : blobs)
++			bmr_package::put(os, m.data(), m.size());
++	}
++	for (int op = 0; op < SPDZ_OP_N; op++)
++	{
++		size_t n = this->spdz_wires[op].size();
++		os.write((const char*) &n, sizeof(n));
++		for (auto& stream : this->spdz_wires[op])
++			bmr_package::put(os, stream.get_data(), stream.get_length());
++	}
++	if (!os)
++		throw runtime_error("failed writing BMR package: " + path);
++}
++
++template<class T>
++void RealProgramParty<T>::load_package(const string& path)
++{
++	ifstream is(path, ios::binary);
++	if (!is)
++		throw runtime_error("cannot read BMR package: " + path);
++	is.read((char*) &this->delta, sizeof(this->delta));
++	vector<char> data;
++	for (auto* store : {&this->garbled_circuits, &this->input_masks_store,
++			&this->output_masks_store, &this->wire_storage})
++	{
++		size_t n = 0;
++		is.read((char*) &n, sizeof(n));
++		for (size_t i = 0; i < n; i++)
++		{
++			bmr_package::get(is, data);
++			LocalBuffer msg;
++			msg.serialize(data.data(), data.size());
++			msg.reset_head();
++			store->push_and_clear(msg);
++		}
++	}
++	for (int op = 0; op < SPDZ_OP_N; op++)
++	{
++		this->spdz_wires[op].clear();
++		size_t n = 0;
++		is.read((char*) &n, sizeof(n));
++		for (size_t i = 0; i < n; i++)
++		{
++			bmr_package::get(is, data);
++			this->spdz_wires[op].push_back({});
++			this->spdz_wires[op].back().append(
++					(const octet*) data.data(), data.size());
++		}
++	}
++}
++
+ template<class T>
+ RealProgramParty<T>::~RealProgramParty()
+ {

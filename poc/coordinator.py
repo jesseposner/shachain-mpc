@@ -121,8 +121,12 @@ class Coordinator:
             open(os.path.join(self.mpspdz, sch), 'rb').read()).decode()
         return name, files
 
-    def run_step(self, plan, spec, protocol='field'):
-        if protocol == 'bmr':
+    def run_step(self, plan, spec, protocol='field', mode='run',
+                 precompiled=None):
+        if precompiled:
+            name, files = precompiled
+            binary, args = 'mal-rep-bmr-party.x', ['-N', '3', '-O']
+        elif protocol == 'bmr':
             name, files = self.compile_step(plan, domain='binary')
             binary, args = 'mal-rep-bmr-party.x', ['-N', '3', '-O']
         else:
@@ -138,7 +142,8 @@ class Coordinator:
                 results[slot] = post(url, '/step', {
                     'name': name, 'files': files, 'plan': plan, 'spec': spec,
                     'slot': slot, 'party0_host': party0_host,
-                    'port': self.port, 'binary': binary, 'args': args})
+                    'port': self.port, 'binary': binary, 'args': args,
+                    'mode': mode})
             except Exception as e:
                 errors.append(f'slot {slot}: {e}')
 
@@ -176,9 +181,23 @@ class Coordinator:
 
     # -- lifecycle --------------------------------------------------------
 
-    def init_channel(self, protocol='field'):
+    def pregarble_cold_start(self):
+        """Compile the (public, input-independent) channel-open program and
+        have the quorum garble and stockpile the package. Runs before the
+        seed exists."""
         plan, spec, out_vids = self.pl.init_plan()
-        regs, _, _ = self.run_step(plan, spec, protocol=protocol)
+        precompiled = self.compile_step(plan, domain='binary')
+        self._cold = (plan, spec, out_vids, precompiled)
+        self.run_step(plan, spec, mode='garble', precompiled=precompiled)
+
+    def init_channel(self, protocol='field'):
+        if protocol == 'package':
+            plan, spec, out_vids, precompiled = self._cold
+            regs, _, _ = self.run_step(plan, spec, mode='eval',
+                                       precompiled=precompiled)
+        else:
+            plan, spec, out_vids = self.pl.init_plan()
+            regs, _, _ = self.run_step(plan, spec, protocol=protocol)
         self.pl.store_masked(out_vids, regs)
 
     def restore(self):
@@ -267,10 +286,12 @@ def main():
     ap.add_argument('--updates', type=int, default=6)
     ap.add_argument('--after', type=int, default=3)
     ap.add_argument('--mpspdz', default=os.path.expanduser('~/src/MP-SPDZ'))
-    ap.add_argument('--cold-start', choices=['bmr', 'field'], default='bmr',
-                    help='protocol for the 48-edge channel open: bmr runs it '
-                         'as a jointly garbled circuit (3 online rounds) and '
-                         'hands the masked frontier to the field engine')
+    ap.add_argument('--cold-start', choices=['package', 'bmr', 'field'],
+                    default='package',
+                    help='channel-open mode: package pre-garbles the circuit '
+                         'at setup (before the seed exists) and evaluates the '
+                         'stockpiled package at open in two online rounds; '
+                         'bmr garbles in-session; field uses replicated MPC')
     args = ap.parse_args()
 
     procs, workdirs = [], []
@@ -308,9 +329,15 @@ def main():
         print('== setup: dealing RSS summands member-to-member')
         coord.setup()
         oracle = local_oracle_seed(workdirs) if args.local else None
+        if args.cold_start == 'package':
+            t = time.time()
+            coord.pregarble_cold_start()
+            print(f'== pre-garbled channel-open package stockpiled '
+                  f'({time.time() - t:.1f}s, before the seed is used)')
 
-        label = ('jointly garbled BMR circuit' if args.cold_start == 'bmr'
-                 else 'replicated MPC')
+        label = {'package': 'stockpiled garbled package',
+                 'bmr': 'jointly garbled BMR circuit',
+                 'field': 'replicated MPC'}[args.cold_start]
         print(f'== channel open: 48-edge cold start via {label}')
         t = time.time()
         coord.init_channel(protocol=args.cold_start)

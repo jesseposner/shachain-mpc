@@ -57,6 +57,29 @@ chain.
 - Quorum change: same pattern as channel open, since RESTORE from the seed is
   also a bounded chain of edges (at most 48).
 
+## Stockpiled packages (the missing piece, now built)
+
+MP-SPDZ's BMR originally interleaved garbling and evaluation in one process,
+so the input-independence of garbling could not be exercised across time. We
+patched the party runtime (see `patches/mp-spdz-bmr-phase-timing.patch`) with
+two flags: `-G <file>` garbles the whole program and dumps each party's
+package to disk (garbled tables, wire keys, input/output masks, SPDZ wires,
+delta), and `-E <file>` loads a package in a fresh process and runs only the
+online evaluation.
+
+Measured, malicious, K=48 cold start: garble+dump 17.4 s on loopback and
+0.21 GB per party on disk, any time in advance; evaluation later in a fresh
+process in 0.47 s, 8.7 KB, and two online rounds, byte-identical to the BOLT
+reference. In the distributed PoC the package is stockpiled at setup, before
+the seed exists, and channel open drops from ~12-23 s to 1.7 s end to end.
+
+Safety: a package must be evaluated at most once: evaluating the
+same garbled circuit on two different inputs leaks, and the runtime does not
+stop a second evaluation (we verified it will happily run one), so the PoC
+member deletes its package immediately after use and real enforcement
+belongs in the authorization layer. And the stored package must be
+integrity-bound to the channel and quorum that will consume it.
+
 ## Why no cut-and-choose
 
 Review question (Paul): does the garbling trick need cut-and-choose? No, and
@@ -85,6 +108,6 @@ belong to the authorization layer.
   tuples for every later step. Authenticating member-held masks against a
   malicious party is part of the authorization layer, as with all volatile
   state.
-- Garbled-package integrity: a stored 1.6 GB package must be integrity-bound
-  to the channel and quorum that will consume it.
-- A WAN run to confirm the three-round online phase behaves as computed.
+- Garbled-package integrity and single-use enforcement in the authorization
+  layer (the mechanism exists; the policy does not).
+- A WAN run to confirm the two-round package evaluation behaves as computed.

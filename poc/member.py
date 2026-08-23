@@ -140,29 +140,45 @@ def build_inputs(spec, slot):
 
 def handle_step(req):
     slot = req['slot']
+    mode = req.get('mode', 'run')
     # 1. Materialize the compiled program.
     for rel, b64 in req['files'].items():
         path = os.path.join(STATE.workdir, rel)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'wb') as f:
             f.write(base64.b64decode(b64))
-    # 2. Private inputs, in the engine's consumption order.
-    inputs, staged = build_inputs(req['spec'], slot)
-    with open(os.path.join(STATE.workdir, 'Player-Data',
-                           f'Input-P{slot}-0'), 'w') as f:
-        f.write('\n'.join(str(v) for v in inputs) + '\n')
+    # 2. Private inputs, in the engine's consumption order. A 'garble' step
+    # is input-independent: nothing private is needed or supplied.
+    input_file = os.path.join(STATE.workdir, 'Player-Data',
+                              f'Input-P{slot}-0')
+    staged = {}
+    if mode == 'garble':
+        open(input_file, 'a').close()
+    else:
+        inputs, staged = build_inputs(req['spec'], slot)
+        with open(input_file, 'w') as f:
+            f.write('\n'.join(str(v) for v in inputs) + '\n')
     # 3. Clear stale persistence, run the party.
     persist = os.path.join(STATE.workdir, 'Persistence',
                            f'Transactions-P{slot}.data')
     if os.path.exists(persist):
         os.remove(persist)
+    pkg = os.path.join(STATE.workdir, f'bmr-pkg-{req["name"]}')
+    extra = req.get('args', [])
+    if mode == 'garble':
+        extra = extra + ['-G', pkg]
+    elif mode == 'eval':
+        extra = extra + ['-E', pkg]
     cmd = [os.path.join(STATE.mpspdz, req['binary']),
            str(slot), req['name'], '-h', req['party0_host'],
-           '-pn', str(req['port'])] + req.get('args', [])
+           '-pn', str(req['port'])] + extra
     out = subprocess.run(cmd, cwd=STATE.workdir, capture_output=True,
                          text=True, timeout=600)
     if out.returncode != 0:
         return {'ok': False, 'err': out.stderr[-2000:]}
+    if mode == 'eval':
+        # one-time use: a garbled package must never be evaluated twice
+        os.remove(f'{pkg}-P{slot}')
     for vid, r in staged.items():
         STATE.masks[vid] = r
     STATE.save()
