@@ -86,9 +86,14 @@ this gets expensive.
 
 ## Deliberate choices worth knowing
 
-- SSH is open to `0.0.0.0/0` on these ephemeral, key-only nodes. Nothing else
-  is exposed: the MPC ports and the member agents listen only inside the
-  WireGuard mesh, whose single UDP port is scoped to the four node IPs.
+- SSH is reachable only from the operator's address (`prepare-aws.sh` detects
+  it, `SSH_CIDR` overrides it, and opening it to the world is refused).
+  Nothing else is exposed: the MPC ports and the member agents listen only
+  inside the WireGuard mesh, whose single UDP port is scoped to the four node
+  addresses.
+- `wan/nodes.txt` holds live instance IDs and public addresses and is
+  gitignored. Keep it out of commits and out of anything you paste
+  elsewhere.
 - The coordinator runs on member 0 rather than a laptop, so a home uplink is
   not in the measurement path. It still only handles public data.
 - Bootstrap clones this repo from GitHub, so nothing is uploaded and every
