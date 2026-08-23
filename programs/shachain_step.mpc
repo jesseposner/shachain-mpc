@@ -32,6 +32,7 @@ CHECK = int(program.args[4]) if len(program.args) > 4 else 0
 SEP = int(program.args[5]) if len(program.args) > 5 else 0
 IDX = int(program.args[6]) if len(program.args) > 6 else 0
 EXPORT = int(program.args[7]) if len(program.args) > 7 else 0
+CONTRIB = int(program.args[8]) if len(program.args) > 8 else 1
 
 SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
@@ -76,10 +77,25 @@ def nonzero(bits):
 
 
 t256 = sbitvec.get_type(256)
+
+
+def gather(size=1):
+    """XOR of CONTRIB parties' contributions; no single party knows the result
+    when CONTRIB > 1. The XOR gates are free."""
+    def one(player):
+        return (t256.get_input_from(player, size=size) if size > 1
+                else t256.get_input_from(player))
+    acc = one(0)
+    for player in range(1, CONTRIB):
+        other = one(player)
+        acc = sbitvec.from_vec([a ^ b for a, b in zip(acc.v, other.v)])
+    return acc
+
+
 if SEP:
-    xs = [t256.get_input_from(0) for _ in range(N)]
+    xs = [gather() for _ in range(N)]
 else:
-    xs = [t256.get_input_from(0, size=N) if N > 1 else t256.get_input_from(0)]
+    xs = [gather(size=N)]
 
 
 def walk(x):
