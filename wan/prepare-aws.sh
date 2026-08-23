@@ -33,9 +33,7 @@ for R in $REGIONS; do
   aws ec2 authorize-security-group-ingress --region "$R" --group-id "$SG" \
     --protocol tcp --port 22 --cidr 0.0.0.0/0 >/dev/null 2>&1 || true
 
-  AMI=$(aws ec2 ssm get-parameter --region "$R" --name "$SSM" \
-        --query Parameter.Value --output text 2>/dev/null \
-        || aws ssm get-parameter --region "$R" --name "$SSM" \
-           --query Parameter.Value --output text)
+  AMI=$(aws ssm get-parameter --region "$R" --name "$SSM" \
+        --query Parameter.Value --output text)
   echo "$R $SG $AMI"
 done

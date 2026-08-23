@@ -23,7 +23,7 @@ for R in $REGIONS; do
   SG=$(aws ec2 describe-security-groups --region "$R" \
        --filters Name=group-name,Values="$KEY" \
        --query 'SecurityGroups[0].GroupId' --output text)
-  AMI=$(aws ec2 ssm get-parameter --region "$R" --name "$SSM" \
+  AMI=$(aws ssm get-parameter --region "$R" --name "$SSM" \
         --query Parameter.Value --output text)
   ID=$(aws ec2 run-instances --region "$R" --image-id "$AMI" \
        --instance-type "$TYPE" --key-name "$KEY" --security-group-ids "$SG" \
