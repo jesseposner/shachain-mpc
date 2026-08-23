@@ -1,16 +1,17 @@
+== setup: dealing RSS summands member-to-member
 Traceback (most recent call last):
   File "/home/ubuntu/shachain-mpc/poc/coordinator.py", line 385, in <module>
     main()
-  File "/home/ubuntu/shachain-mpc/poc/coordinator.py", line 326, in main
-    cp = Counterparty(REPO)
-         ^^^^^^^^^^^^^^^^^^
-  File "/home/ubuntu/shachain-mpc/poc/coordinator.py", line 229, in __init__
-    subprocess.run(['cargo', 'build', '-q', '--release'],
-  File "/usr/lib/python3.12/subprocess.py", line 548, in run
-    with Popen(*popenargs, **kwargs) as process:
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
-    self._execute_child(args, executable, preexec_fn, close_fds,
-  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
-    raise child_exception_type(errno_num, err_msg, err_filename)
-FileNotFoundError: [Errno 2] No such file or directory: 'cargo'
+  File "/home/ubuntu/shachain-mpc/poc/coordinator.py", line 334, in main
+    coord.pregarble_cold_start()
+  File "/home/ubuntu/shachain-mpc/poc/coordinator.py", line 191, in pregarble_cold_start
+    self.run_step(plan, spec, mode='garble', precompiled=precompiled)
+  File "/home/ubuntu/shachain-mpc/poc/coordinator.py", line 157, in run_step
+    raise RuntimeError('; '.join(errors))
+RuntimeError: slot 0: timed out; slot 1: http://10.99.0.2:9001/step: Using statistical security parameter 40
+Fatal error in communication: read_some: stream truncated [asio.ssl.stream:1]
+This is probably because party 0 encountered a problem.
+; slot 2: http://10.99.0.3:9001/step: Using statistical security parameter 40
+Fatal error in communication: read_some: stream truncated [asio.ssl.stream:1]
+This is probably because party 0 encountered a problem.
+

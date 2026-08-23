@@ -41,6 +41,8 @@ import point_export  # noqa: E402
 
 Q = point_export.Q
 R_INV = pow(2**256 % Q, -1, Q)
+# A single step can be a 48-edge garbling, tens of minutes over a WAN.
+STEP_TIMEOUT = int(os.environ.get('STEP_TIMEOUT', 4 * 3600))
 
 
 def encode_int(value_bytes):
@@ -173,7 +175,7 @@ def handle_step(req):
            str(slot), req['name'], '-h', req['party0_host'],
            '-pn', str(req['port'])] + extra
     out = subprocess.run(cmd, cwd=STATE.workdir, capture_output=True,
-                         text=True, timeout=600)
+                         text=True, timeout=STEP_TIMEOUT)
     if out.returncode != 0:
         return {'ok': False, 'err': out.stderr[-2000:]}
     if mode == 'eval':

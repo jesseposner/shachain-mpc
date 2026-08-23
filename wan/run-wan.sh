@@ -216,7 +216,8 @@ if want life; then
      cd \$HOME/shachain-mpc && python3 poc/coordinator.py \
        --members http://$W0:9001,http://$W1:9001,http://$W2:9001,http://$W3:9001 \
        --mpc-hosts $W0,$W1,$W2,$W3 \
-       --mpspdz \$HOME/MP-SPDZ --updates ${UPDATES:-6} --after ${AFTER:-3}" \
+       --mpspdz \$HOME/MP-SPDZ --updates ${UPDATES:-6} --after ${AFTER:-3} \
+       ${COORD_ARGS:-}" \
     2>&1 | tee "$OUT/lifecycle.txt"
 fi
 

@@ -42,6 +42,10 @@ P_FIELD = point_export.P_FIELD
 M = planner.M
 QUORUM = 3
 N_MEMBERS = planner.N_MEMBERS
+# One MPC step can be a 48-edge garbling, which over a WAN is tens of
+# minutes: ~1,600 communication rounds per shachain edge at wide-area
+# latency. Keep this well above the slowest step you expect.
+STEP_TIMEOUT = int(os.environ.get('STEP_TIMEOUT', 4 * 3600))
 
 
 def decode_bytes(val):
@@ -60,7 +64,7 @@ def decompress(hexpt):
     return (x, y)
 
 
-def post(url, path, obj, timeout=600):
+def post(url, path, obj, timeout=300):
     data = json.dumps(obj).encode()
     req = urllib.request.Request(url + path, data=data,
                                  headers={'Content-Type': 'application/json'})
@@ -143,7 +147,7 @@ class Coordinator:
                     'name': name, 'files': files, 'plan': plan, 'spec': spec,
                     'slot': slot, 'party0_host': party0_host,
                     'port': self.port, 'binary': binary, 'args': args,
-                    'mode': mode})
+                    'mode': mode}, timeout=STEP_TIMEOUT)
             except Exception as e:
                 errors.append(f'slot {slot}: {e}')
 
@@ -286,6 +290,10 @@ def main():
     ap.add_argument('--updates', type=int, default=6)
     ap.add_argument('--after', type=int, default=3)
     ap.add_argument('--mpspdz', default=os.path.expanduser('~/src/MP-SPDZ'))
+    ap.add_argument('--skip-crash', action='store_true',
+                    help='skip the crash, quorum change and RESTORE. Over a '
+                         'WAN the RESTORE is tens of sequential hashes and so '
+                         'tens of minutes; the local run covers it.')
     ap.add_argument('--cold-start', choices=['package', 'bmr', 'field'],
                     default='package',
                     help='channel-open mode: package pre-garbles the circuit '
@@ -361,17 +369,20 @@ def main():
         for _ in range(args.updates):
             do_update()
 
-        print('== crash: all volatile masks destroyed; member 2 offline')
-        coord.crash_all()
-        coord.public['quorum'] = [0, 1, 3]
-        print('== quorum change to [0, 1, 3] + RESTORE from summands')
-        t = time.time()
-        hashes = coord.restore()
-        print(f'   restored with {hashes} hashes in {time.time() - t:.1f}s')
+        if args.skip_crash:
+            print('== crash, quorum change and RESTORE skipped')
+        else:
+            print('== crash: all volatile masks destroyed; member 2 offline')
+            coord.crash_all()
+            coord.public['quorum'] = [0, 1, 3]
+            print('== quorum change to [0, 1, 3] + RESTORE from summands')
+            t = time.time()
+            hashes = coord.restore()
+            print(f'   restored with {hashes} hashes in {time.time() - t:.1f}s')
 
-        print(f'== continuing: {args.after} updates with the new quorum')
-        for _ in range(args.after):
-            do_update()
+            print(f'== continuing: {args.after} updates with the new quorum')
+            for _ in range(args.after):
+                do_update()
 
         cp.close()
         print(f'== distributed PoC complete in {time.time() - t0:.1f}s: '
