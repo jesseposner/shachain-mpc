@@ -1,52 +1,71 @@
 # End-to-end proof of concept
 
-`driver.py` runs a full channel lifecycle for a 2-of-4 custodian group
-(Iceberg t=2: quorum of 3, one corruption tolerated, one standby member):
+A distributed channel lifecycle for a 2-of-4 custodian group (Iceberg t=2:
+quorum of 3, one corruption tolerated, one standby member), split the way a
+real deployment is:
 
-```
-== setup: RSS seed, 4 members, quorum [0, 1, 2]
-== channel open: 48-edge cold start in MPC          12.5 s
-== steady state: 6 channel updates
-   state c: point published, state c-1 revoked      ~2.5 s each
-== crash: volatile masks destroyed; member 2 goes offline
-== quorum change to [0, 1, 3] + RESTORE             92 hashes, 17.9 s
-== continuing: 3 more updates with the new quorum
-== PoC complete in 48.5 s: LDK accepted every point and secret
-```
+- **`member.py`**, one per custodian machine: the only place that member's
+  private state exists. Durable RSS seed summands (dealt member-to-member at
+  setup; the coordinator never sees them) and volatile XOR masks for
+  frontier values. It receives compiled bytecode plus a public input spec,
+  supplies its own private inputs, runs its MPC party, and returns public
+  data only: revealed registers and curve points computed from its own
+  Z_q shares.
+- **`coordinator.py`**: public state only. It does the tree bookkeeping
+  (`planner.py`), compiles each engine step, ships it to the active quorum,
+  combines the members' points with replicated cross-checks, and plays the
+  channel against a live LDK counterparty
+  (`ldk-check/src/bin/counterparty.rs`), which runs insert_secret and
+  checks every revealed secret against its earlier point.
 
-What each phase exercises:
-
-- **Setup.** Four RSS summands, summand j held by every member except j, so
-  any three members reconstruct the seed inside MPC. Summand files are the
-  only durable secret state.
-- **Cold start.** The DFS frontier is built down to leaf 2^48-1 through the
-  maliciously secure replicated MPC. Frontier values leave each run only as
-  XOR-masked tuples: a public masked value plus one fresh mask per active
-  member (volatile state).
-- **Steady state.** Per commitment, one MPC run advances the frontier by
-  exactly the BOLT-required edges, re-masks new nodes, and exports the leaf
-  scalar; the driver combines per-member points with replicated cross-checks
-  into P_c and sends it to the counterparty. A later run opens the previous
-  leaf for revocation.
-- **Counterparty.** A live rust-lightning process
-  (`ldk-check/src/bin/counterparty.rs`) receives every point and secret,
-  runs LDK's own insert_secret derivation checks, and verifies each revealed
-  secret matches the earlier point. Any failure aborts the PoC.
-- **Crash and quorum change.** All volatile masks are destroyed and one
-  member goes offline. The new quorum rebuilds the frontier from the seed
-  summands alone, and re-derives any prepared-but-unreleased leaves so the
-  pending revocation still completes, byte-identically, after the crash.
-
-Run it (MP-SPDZ built per the main README, cargo available):
+## The local demo
 
 ```sh
-python3 poc/driver.py --updates 6 --after 3
+python3 poc/coordinator.py --local --updates 6 --after 3
 ```
 
-Timings are dominated by per-step MP-SPDZ compilation on the driver's
-critical path, not by the MPC itself; a production engine would compile
-step templates once. Out of scope, recorded here deliberately: the
-release-authorization layer (nothing gates `release_leaf`), duplicate
-consistency checks on summand inputs, garbled-circuit channel open (the
-cold start uses the replicated MPC), and network transport (members are
-processes on one machine; the WAN plan covers deployment).
+spawns four member agents on localhost and runs:
+
+```
+== setup: dealing RSS summands member-to-member
+== channel open: 48-edge cold start                 12.5 s
+== steady state: 6 updates                          0.3-5 s each
+== crash: all volatile masks destroyed; member 2 offline
+== quorum change to [0, 1, 3] + RESTORE             92 hashes, 17.4 s
+== continuing: 3 updates with the new quorum
+== distributed PoC complete in 47 s: LDK accepted every point and secret
+```
+
+The RESTORE rebuilds the frontier from the seed summands alone and
+re-derives prepared-but-unreleased leaves, so the revocation pending at
+crash time still completes, byte-identically, under the new quorum.
+
+## WAN deployment
+
+Run `member.py --port 9001 --workdir ~/member --mpspdz ~/MP-SPDZ` on each
+node (MP-SPDZ built per the main README), then from anywhere with the repo
+and an MP-SPDZ checkout for compilation:
+
+```sh
+python3 poc/coordinator.py \
+  --members http://n0:9001,http://n1:9001,http://n2:9001,http://n3:9001 \
+  --mpc-hosts n0,n1,n2,n3
+```
+
+MPC parties dial the quorum's slot-0 host on ports 14001+; open those plus
+the member HTTP ports between the nodes. See docs/wan-plan.md for the
+cross-region topology.
+
+## Honest limitations
+
+- Nothing gates `release_leaf`: the authorization layer is the largest open
+  work item and is deliberately absent here.
+- Setup ships all TLS keys to every member and deals each summand from a
+  single originator without duplicate-consistency checks; real setup is a
+  verified distribution ceremony.
+- Per-step timing on the coordinator's critical path is dominated by
+  MP-SPDZ compilation, not MPC; a production engine compiles step templates
+  once.
+- Channel open runs through the replicated MPC; the garbled-circuit
+  cold-start package (three online rounds) is measured in
+  results/bmr-notes.md but not wired into this engine.

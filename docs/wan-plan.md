@@ -41,13 +41,13 @@ wide for the benchmark's lifetime, deleted at teardown. Import one SSH key as
    ~5,400 rounds, budget ~15 min; gives the K=48 online phase over WAN).
    Skip mal-rep-bin K=48 (77k rounds, hours) and mal-rep-bmr K=48 garbling
    (81k rounds); the model covers them once the K=1 numbers validate it.
-6. Lifecycle: run the end-to-end PoC (poc/driver.py) across the four nodes.
-   This needs the one missing piece of engineering: splitting the driver into
-   a per-member agent (each node holds its own summand and mask files and
-   writes only its own party input) plus a public coordinator for plans and
-   bookkeeping. The lifecycle then measures what matters over real latency:
-   cold start, per-update time, and the crash + quorum-change + RESTORE
-   sequence with the standby member, verified by the LDK counterparty.
+6. Lifecycle: run the distributed PoC across the four nodes: member.py on
+   each node, coordinator.py --members pointing at them (see poc/README.md).
+   The per-member agent split is built and passing locally; the WAN run
+   measures cold start, per-update time, and the crash + quorum-change +
+   RESTORE sequence with the standby member over real latency, verified by
+   the LDK counterparty. Open the member HTTP ports and the MPC ports
+   (14001+) between the nodes alongside the raw-benchmark ports.
 7. Record results to `results/wan-<date>.md` with the ping matrix alongside
    the predicted-vs-measured table. Terminate instances, delete security
    groups and key pairs.
