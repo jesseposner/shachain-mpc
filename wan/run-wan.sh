@@ -212,10 +212,11 @@ fi
 if want life; then
   echo "=== life: distributed lifecycle (coordinator on member 0) ==="
   $SSHN "$U@$PUB0" \
-    "cd \$HOME/shachain-mpc && python3 poc/coordinator.py \
+    "export PATH=\$HOME/.cargo/bin:\$PATH; \
+     cd \$HOME/shachain-mpc && python3 poc/coordinator.py \
        --members http://$W0:9001,http://$W1:9001,http://$W2:9001,http://$W3:9001 \
        --mpc-hosts $W0,$W1,$W2,$W3 \
-       --mpspdz \$HOME/MP-SPDZ --updates 6 --after 3" \
+       --mpspdz \$HOME/MP-SPDZ --updates ${UPDATES:-6} --after ${AFTER:-3}" \
     2>&1 | tee "$OUT/lifecycle.txt"
 fi
 

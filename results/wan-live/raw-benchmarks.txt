@@ -1,0 +1,16 @@
+--- shachain_step-1-1-0-0 (malicious-rep-bin-party.x)
+Time = 75.4895 seconds 
+Time1 = 64.9957 seconds (0 MB, 0 rounds, 0.116605 CPU seconds)
+Time2 = 10.2494 seconds (0 MB, 0 rounds, 0.0173092 CPU seconds)
+Data sent = 0.476248 MB in ~1875 rounds (party 0 only; use '-v' for more details)
+--- shachain_step-1-1-1-0 (malicious-rep-field-party.x)
+Time = 77.0111 seconds 
+Time1 = 65.0004 seconds (0.467944 MB, 1614 rounds, 0.113257 CPU seconds)
+Time2 = 10.2482 seconds (0.008176 MB, 256 rounds, 0.016672 CPU seconds)
+Time3 = 1.62583 seconds (0.348165 MB, 31 rounds, 0.0102497 CPU seconds)
+Data sent = 0.824461 MB in ~1905 rounds (party 0 only; use '-v' for more details)
+--- shachain_step-1-100-0-0 (malicious-rep-bin-party.x)
+Time = 86.1399 seconds 
+Time1 = 75.2846 seconds (0 MB, 0 rounds, 0.219547 CPU seconds)
+Time2 = 10.6579 seconds (0 MB, 0 rounds, 0.0176392 CPU seconds)
+Data sent = 4.35347 MB in ~2106 rounds (party 0 only; use '-v' for more details)

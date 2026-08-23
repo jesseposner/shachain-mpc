@@ -1,0 +1,20 @@
+Using statistical security parameter 40
+Trying to run 256-bit computation (256-bit representation)
+Starting timer 1 at 0 (0 MB, 0 rounds, 0 CPU seconds) after 1.9336e-05
+Stopped timer 1 at 64.9267 (0.467944 MB, 1614 rounds, 0.1309 CPU seconds)
+Starting timer 2 at 0 (0 MB, 0 rounds, 0 CPU seconds) after 2.535e-06
+Stopped timer 2 at 10.322 (0.008176 MB, 256 rounds, 0.0193352 CPU seconds)
+Starting timer 3 at 0 (0 MB, 0 rounds, 0 CPU seconds) after 3.046e-06
+Stopped timer 3 at 1.57294 (0.277216 MB, 31 rounds, 0.0103892 CPU seconds)
+The following benchmarks are including preprocessing (offline phase).
+Time = 77.0083 seconds 
+Time1 = 64.9267 seconds (0.467944 MB, 1614 rounds, 0.1309 CPU seconds)
+Time2 = 10.322 seconds (0.008176 MB, 256 rounds, 0.0193352 CPU seconds)
+Time3 = 1.57294 seconds (0.277216 MB, 31 rounds, 0.0103892 CPU seconds)
+Data sent = 0.75348 MB in ~1905 rounds (party 2 only; use '-v' for more details)
+Global data sent = 2.40237 MB (all parties)
+Communication time accounts for more than 95 percent of total time (76.9882 seconds). This might be because of the computation and the network setting, but it could also be product of the optimization trade-off during compilation. See https://mp-spdz.readthedocs.io/en/latest/troubleshooting.html#high-number-of-rounds-or-slow-wan-execution
+This program might benefit from some protocol options.
+Consider adding the following at the beginning of your code:
+	program.use_edabit(True)
+This virtual machine was compiled with GCC. Recompile with 'CXX = clang++' in 'CONFIG.mine' for optimal performance.

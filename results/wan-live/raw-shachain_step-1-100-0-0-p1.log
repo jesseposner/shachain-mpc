@@ -1,0 +1,11 @@
+Using statistical security parameter 40
+Starting timer 1 at 0 (0 MB, 0 rounds, 0 CPU seconds) after 1.596e-05
+Stopped timer 1 at 75.4028 (0 MB, 0 rounds, 0.229216 CPU seconds)
+Starting timer 2 at 0 (0 MB, 0 rounds, 0 CPU seconds) after 2.891e-06
+Stopped timer 2 at 10.6059 (0 MB, 0 rounds, 0.0193136 CPU seconds)
+The following benchmarks are including preprocessing (offline phase).
+Time = 86.132 seconds 
+Time1 = 75.4028 seconds (0 MB, 0 rounds, 0.229216 CPU seconds)
+Time2 = 10.6059 seconds (0 MB, 0 rounds, 0.0193136 CPU seconds)
+Data sent = 4.35027 MB in ~2105 rounds (party 1 only; use '-v' for more details)
+Global data sent = 13.054 MB (all parties)
