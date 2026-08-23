@@ -1,0 +1,30 @@
+diff --git a/CONFIG b/CONFIG
+index 397c5c1..542ad5e 100644
+--- a/CONFIG
++++ b/CONFIG
+@@ -105,7 +105,7 @@ endif
+ 
+ BOOST = -lboost_thread $(MY_BOOST)
+ 
+-CFLAGS += $(ARCH) $(MY_CFLAGS) $(GDEBUG) -Wextra -Wall $(OPTIM) -I$(ROOT) -I$(ROOT)/deps -pthread $(PROF) $(DEBUG) $(MOD) $(GF2N_LONG) $(PREP_DIR) $(SSL_DIR) $(SECURE) -std=c++20 -Werror -Wno-overloaded-virtual
++CFLAGS += $(ARCH) $(MY_CFLAGS) $(GDEBUG) -Wextra -Wall $(OPTIM) -I$(ROOT) -I$(ROOT)/deps -pthread $(PROF) $(DEBUG) $(MOD) $(GF2N_LONG) $(PREP_DIR) $(SSL_DIR) $(SECURE) -std=c++20 -Wno-overloaded-virtual
+ CFLAGS += $(BREW_CFLAGS)
+ CPPFLAGS = $(CFLAGS)
+ LD = $(CXX)
+diff --git a/Protocols/ReplicatedInput.hpp b/Protocols/ReplicatedInput.hpp
+index 5e90910..b6ec738 100644
+--- a/Protocols/ReplicatedInput.hpp
++++ b/Protocols/ReplicatedInput.hpp
+@@ -197,10 +197,10 @@ void ReplicatedInput<T>::finalize_vector_sum(const vector<int>& players,
+         auto& G = protocol.shared_prngs[1];
+         if (im_in)
+             for (auto& x : target)
+-                x[1] += G.get<typename T::open_type>();
++                x[1] += G.template get<typename T::open_type>();
+         else
+             for (auto& x : target)
+-                x[1] = G.get<typename T::open_type>();
++                x[1] = G.template get<typename T::open_type>();
+     }
+ }
+ 
