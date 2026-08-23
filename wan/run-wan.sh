@@ -35,13 +35,15 @@ Q=115792089237316195423570985008687907852837564279074904382605163141518161494337
 OUT=${OUT:-$REPO/results/wan-$(date +%Y%m%d-%H%M)}
 mkdir -p "$OUT"
 
+# capture the requested phases before positional parameters are reused below
+PHASES="$*"
+[ -n "$PHASES" ] || PHASES="mesh build certs ping bench life"
+
 [ -s "$NODES" ] || { echo "no wan/nodes.txt; run wan/launch-instances.sh first"; exit 1; }
 IPS=$(awk '{print $4}' "$NODES")
 set -- $IPS
 PUB0=$1 PUB1=$2 PUB2=$3
 W0=10.99.0.1 W1=10.99.0.2 W2=10.99.0.3 W3=10.99.0.4
-PHASES=${*:-"mesh build certs ping bench life"}
-[ $# -eq 0 ] || PHASES="$*"
 want() { case " $PHASES " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
 echo "phases: $PHASES"
@@ -98,7 +100,7 @@ PersistentKeepalive = 25
       sudo tee /etc/wireguard/wg0.conf >/dev/null && \
       (sudo systemctl restart wg-quick@wg0 2>/dev/null || \
        (sudo wg-quick down wg0 2>/dev/null; sudo wg-quick up wg0))" >/dev/null
-    echo "  member $IDX configured with $(($(grep -c '^\[Peer\]' "$OUT/wg-pubkeys.txt" 2>/dev/null || echo 3))) peers"
+    echo "  member $IDX configured"
   done < "$NODES"
 
   echo "=== mesh: checking every direction ==="
