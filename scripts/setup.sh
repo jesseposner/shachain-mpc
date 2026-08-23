@@ -11,6 +11,12 @@ if [ "$(uname)" = Darwin ]; then
   brew list --formula | grep -qx libsodium || brew install libsodium
   brew list --formula | grep -qx boost || brew install boost
   brew list --formula | grep -qx 'openssl@3' || brew install openssl@3
+elif command -v apt-get >/dev/null; then
+  sudo apt-get update -qq
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+    build-essential git python3 libgmp-dev libsodium-dev libssl-dev \
+    libboost-dev libboost-thread-dev libboost-filesystem-dev \
+    libboost-iostreams-dev
 fi
 
 if [ ! -d "$MPSPDZ" ]; then
@@ -26,14 +32,18 @@ for patch in mp-spdz-clang21 mp-spdz-bmr-phase-timing; do
     echo "$patch already applied or does not apply cleanly; continuing"
   fi
 done
-cat > CONFIG.mine <<CFG
-CXX = /usr/bin/g++
-ARCH = -march=armv8.2-a+crypto
-MY_CFLAGS = -Wno-deprecated-literal-operator
-CFG
-[ "$(uname -m)" = arm64 ] || sed -i.bak '/^ARCH/d' CONFIG.mine
+# ARM (Apple Silicon or Graviton) wants the crypto extensions; on x86 leave
+# the default -march=native. The deprecation flag is clang-only.
+: > CONFIG.mine
+case "$(uname -m)" in
+  arm64|aarch64) echo 'ARCH = -march=armv8.2-a+crypto' >> CONFIG.mine ;;
+esac
+if [ "$(uname)" = Darwin ]; then
+  echo 'CXX = /usr/bin/g++' >> CONFIG.mine
+  echo 'MY_CFLAGS = -Wno-deprecated-literal-operator' >> CONFIG.mine
+fi
 
-make -j"$(sysctl -n hw.ncpu 2>/dev/null || nproc)" \
+make -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu)" \
   replicated-bin-party.x malicious-rep-bin-party.x \
   replicated-field-party.x malicious-rep-field-party.x \
   rep-bmr-party.x mal-rep-bmr-party.x
