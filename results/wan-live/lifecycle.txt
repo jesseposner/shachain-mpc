@@ -1,0 +1,16 @@
+phases: life
+output: /Users/jesse/src/shachain-mpc/results/wan-live
+=== life: distributed lifecycle (coordinator on member 0) ===
+== setup: dealing RSS summands member-to-member
+== pre-garbled channel-open package stockpiled (4538.0s, before the seed is used)
+== channel open: 48-edge cold start via stockpiled garbled package
+   cold start 4.8s
+== steady state: 3 updates
+   state 0: point published (16.7s)
+   state 1: point published, state 0 revoked (20.3s)
+   state 2: point published, state 1 revoked (94.6s)
+== crash, quorum change and RESTORE skipped
+== distributed PoC complete in 4676.4s: LDK accepted every point and secret
+
+results in /Users/jesse/src/shachain-mpc/results/wan-live
+REMEMBER: sh wan/teardown.sh
