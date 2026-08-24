@@ -36,6 +36,14 @@ so none of them can close until it exists:
 
 ### 1.2 Setup is not a real ceremony
 
+**RESOLVED.** Not by building a ceremony, which an intermediate version did
+and which was the wrong answer, but by taking the key material from Iceberg.
+An Iceberg share is already seeds indexed by the groups of t-1 participants
+the holder is not in, so at t=2 it is exactly a summand held by everyone
+except one member. Both failure modes go with it: no entropy depends on a
+single member, and nothing is distributed by us to equivocate about. Setup's
+security is now Iceberg's key generation's. See docs/key-material.md.
+
 Each summand comes from a single originator with no check that the same bytes
 went to every holder.
 
@@ -69,6 +77,13 @@ three contributions versus one.
   private key.
 
 ### 1.4 Member agents: no authentication, and `/step` is remote code execution — UNDOCUMENTED
+
+**PARTLY RESOLVED.** Writes now resolve through a check that refuses anything
+escaping the working directory, and the binary is checked against a
+whitelist, which closes both code-execution paths. `--bind` allows listening on the mesh
+address rather than every interface, and the off-curve point issue is fixed.
+Caller authentication is still absent and is now stated in poc/README.md
+rather than undocumented.
 
 `poc/member.py:239` binds to `0.0.0.0`; no route authenticates its caller. Three
 separate problems, in increasing severity:
@@ -123,6 +138,11 @@ absent. The most under-tracked item in this list.
 
 ### 2.1 Live node addresses are in the public repo again
 
+**RESOLVED.** The ignore rules are patterns rather than exact paths, which
+is what the original mistake called for, and the WAN scripts write node
+addresses only to the ignored `wan/nodes.txt`. Verified: nothing tracked in
+the repository names any node address.
+
 `results/wan-live/wg-pubkeys.txt` and `results/wan-20260823-1537/wg-pubkeys.txt`
 are tracked and pushed (`f618ce8`, `a992efe`), carrying the same four public IPs
 purged from history in `a436050`, each with its WireGuard public key.
@@ -171,6 +191,11 @@ lifecycle, and custody for one package per expected channel are implied but
 never specified.
 
 ### 3.3 BMR-based quorum change
+
+**OBSOLETE.** A quorum change no longer costs anything to make fast, because
+it no longer costs anything at all. Prepared values are hidden under a
+replicated sharing, so a member can drop out and the new quorum simply
+continues. See docs/buffer-storage.md.
 
 `results/bmr-notes.md:60` proposes it; the PoC does quorum change through the
 field engine instead (92 hashes, ~19 s).
@@ -238,6 +263,21 @@ mitigation for the denial path.
   Delete it or annotate why it is kept.
 
 ---
+
+## Added since this sweep
+
+- **Vectorised hashing was wrong in every lane but the first.** `circuit.sha256`
+  builds its padding and initial state one bit wide, so a vectorised input
+  gave lane 0 the constants and every other lane zeros. Fixed, and the suite
+  now checks three lanes from three distinct seeds. Every batched figure
+  measured before the fix was recorded against a computation that was wrong.
+- **The engine issued one MPC call per hash**, which serialised independent
+  edges and made bulk precomputation cost its edge count in waits rather than
+  its depth. Fixed by grouping edges per level. See docs/batching.md.
+- **A native SHA-256 was 1.5x slower** than the Bristol circuit it was meant
+  to replace. Recorded in experiments/ with the numbers.
+- **The release gather was sequential**, so what was called one round would
+  have been three round trips over a wide area. Now concurrent.
 
 ## Resolved, kept for the record
 
