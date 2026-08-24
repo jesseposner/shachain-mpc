@@ -74,8 +74,9 @@ is free local work.
    and that is one round with no MPC session at all: the members send the
    summands they hold, the adapter compares the copies it receives and
    XORs, and the result is checked against the point already published. The
-   wide-area figure measured for that operation, 0.18 s, is for an earlier
-   six-round MPC form; the one-round form postdates that run.
+   measured 139 ms across three continents, and 184 ms after a quorum change
+   moved the slowest leg from 118.6 ms to 139.7 ms, which is what a single
+   round should do (`results/wan-20260824.md`).
 
 4. **Channel open resolved by garbled circuits.** The 48-edge cold start
    cannot be computed before the seed exists, but its garbled circuit can:
@@ -88,10 +89,11 @@ is free local work.
 
 5. **A quorum change costs nothing.** Prepared secrets are hidden under a
    replicated sharing derived from the seeds, so any quorum reconstructs
-   them. A member dropping out mid-channel does not destroy the buffer and
-   nothing is rebuilt. This replaced a 77,151-round rebuild that measured 126
-   minutes across three continents, during which the channel could not
-   advance (`docs/buffer-storage.md`).
+   them. Measured across three continents: the Ireland member dropped
+   mid-channel, the Frankfurt standby took over, nothing was rebuilt and the
+   channel continued with LDK accepting every point and secret. This replaced
+   a 77,151-round rebuild that measured 126 minutes, during which the channel
+   could not advance (`docs/buffer-storage.md`).
 
 6. **Setup is Iceberg's, not a second scheme.** The shachain generates no key
    material of its own. An Iceberg share is already seeds indexed by the
@@ -127,12 +129,11 @@ is free local work.
 - **BMR-to-Rep3 handoff.** The masked-output handoff works and is measured;
   authenticating the member-held summands against a malicious party is part
   of the authorization layer above.
-- **Derived rather than measured, for two headline figures.** The one-round
-  payment and the zero-round quorum change both postdate the cross-region
-  run, so their wide-area costs come from multiplying rounds by the 40 ms per
-  round those nodes exhibited. The round counts themselves are measured, and
-  the model predicted values it was not fitted to, but a fresh run is what
-  would settle them.
+- **Batched throughput rests on our patch to MP-SPDZ's vectorised hashing**,
+  which was wrong in every lane but the first. The patch is checked against
+  the plaintext reference for three lanes. It is not checked against MP-SPDZ
+  upstream, which still has the bug, so a stock checkout produces wrong
+  answers in every lane but the first and says nothing about it.
 - **Member agents do not authenticate their caller.** Both code-execution
   paths in `/step` are closed, but any peer reaching the port can still
   overwrite a member's seeds. They are safe only behind the private network

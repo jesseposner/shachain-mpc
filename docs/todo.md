@@ -264,6 +264,28 @@ mitigation for the denial path.
 
 ---
 
+## Closed by the second cross-region run (2026-08-24)
+
+- **The one-round payment and the zero-round quorum change were derived.**
+  Both are now measured: 139 ms for a release, rising to 184 ms after a
+  quorum change moved the slowest leg, and a member dropping out mid-channel
+  with nothing rebuilt (`results/wan-20260824.md`).
+- **The batched throughput figure came from the broken vectorised path.**
+  Re-measured with the fix: 100 verified-correct parallel hashes cost 17%
+  more wall-clock than a single edge.
+
+## Open, found in that run
+
+- **`release_only` does not run under `wan/run-wan.sh`.** The benchmark phase
+  writes an input file for party 0 only, while that program takes an input
+  from all three parties. The manual invocation that worked against the first
+  cluster copied the file by hand. Costs the comparison against the older
+  six-round release form, nothing else.
+- **Our MP-SPDZ vectorised-hashing patch is checked against the plaintext
+  reference, not against upstream.** MP-SPDZ still has the bug; anyone
+  reproducing this on a stock checkout gets wrong answers in every lane but
+  the first, silently.
+
 ## Added since this sweep
 
 - **Vectorised hashing was wrong in every lane but the first.** `circuit.sha256`

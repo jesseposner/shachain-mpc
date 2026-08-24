@@ -32,13 +32,13 @@ watch.
 
 | operation | rounds | wide-area cost | how we know |
 |---|---:|---:|---|
-| **reveal a prepared secret (a payment)** | **1** | ~0.14 s | derived: one round trip on the slowest leg |
+| **reveal a prepared secret (a payment)** | **1** | **139 ms** | measured on the WAN; 184 ms after a quorum change, tracking its slowest leg |
 | the same reveal, earlier six-round MPC form | 6 | 0.18 s | measured on the WAN |
-| **quorum change** | **0** | **none** | measured: the channel continues, nothing is rebuilt |
+| **quorum change** | **0** | **none** | measured on the WAN: the channel continues, nothing is rebuilt |
 | channel open from a stockpiled package | 3 online | **4.8 s** | measured on the WAN |
 | channel open, computed instead | 77,151 | 54.5 min | measured on the WAN |
-| prepare a leaf: validity check and conversion | 58 | ~2.3 s | derived; background work |
-| one shachain edge | ~1,635 | 65 s | measured on the WAN |
+| prepare a leaf: validity check and conversion | 47 | 2.25 s | measured on the WAN; background work |
+| one shachain edge | 1,614 | 65.5 s | measured on the WAN |
 | refill a 1,024-leaf buffer | ~16,800 | ~11 min | derived; 97% hashing, buys 1,024 payments |
 | rebuild from the seed (cold start only) | 77,151 | ~51 min | derived; 126 min measured before batching halved it |
 
@@ -47,11 +47,11 @@ is a property of the circuit rather than the network. Wide-area figures are
 either measured on four cross-region nodes or derived by multiplying rounds
 by the 40 ms per round those nodes exhibited, and the table says which.
 
-Two of these deserve their caveats stated rather than buried. The one-round
-payment is a round count: what was measured over the WAN is the earlier
-six-round MPC form, and the machines were gone before the one-round form
-existed. The quorum-change and buffer figures postdate the WAN run entirely.
-A fresh cross-region run would settle both.
+Two cross-region runs stand behind these. The first
+(`results/wan-20260823.md`) measured an earlier system; the second
+(`results/wan-20260824.md`) measured this one, after the payment path,
+recovery and key material changed. Where they disagree, the later run is the
+current system and says so.
 
 ## Why a payment is one round
 
