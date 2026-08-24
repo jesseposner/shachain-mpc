@@ -148,10 +148,13 @@ for item in plan.get('summands', []):
     values[item['id']] = acc
 
 for item in plan.get('masked', []):
-    # {"id": ..., "m": hex of public masked value}
+    # {"id":..., "m": public masked value, "n": summands in the sharing}
+    # A prepared value is hidden by a replicated sharing, so the summands
+    # come from whichever online member holds each one rather than one per
+    # member. The plan's slot assignment decides who supplies what.
     acc = t256(int(item['m'], 16))
-    for player in range(N_PARTIES):
-        acc = xor_vec(acc, t256.get_input_from(player))
+    for _, slot in item['slots']:
+        acc = xor_vec(acc, t256.get_input_from(slot))
     values[item['id']] = acc
 
 # 2. Hash edges, grouped so that independent hashes cost one round-trip
@@ -209,9 +212,12 @@ export_shares = []
 for out in plan.get('outputs', []):
     val = values[out['id']]
     if out['kind'] == 'mask':
+        # Hide the value under a replicated sharing and reveal only the
+        # masked form. Any later quorum can reconstruct it, which is what
+        # lets a member drop out without the buffer being rebuilt.
         acc = val
-        for player in range(N_PARTIES):
-            acc = xor_vec(acc, t256.get_input_from(player))
+        for _, slot in out['slots']:
+            acc = xor_vec(acc, t256.get_input_from(slot))
         acc.reveal().print_reg()
     elif out['kind'] == 'open':
         val.reveal().print_reg()

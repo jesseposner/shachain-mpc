@@ -6,13 +6,19 @@ which private inputs each party slot must supply, without ever holding a
 private value itself:
 
   plan  = {summands, masked, ops, outputs}       (engine program input)
-  spec  = {'summands': [[j, slot], ...],          summand j from that slot
-           'masked_vids': [vid, ...],             every slot: stored mask
-           'fresh_vids': [vid, ...]}              every slot: fresh mask
+  spec  = {'summands':    [[j, slot], ...],      seed summand j from slot
+           'masked_vids': [[vid, [[j, slot], ...]], ...],
+           'fresh_vids':  [[vid, [[j, slot], ...]], ...]}
 
-Per-slot input order (must match the engine program):
-  own summands in spec order, then one mask per masked_vids entry, then one
-  fresh mask per fresh_vids entry.
+A prepared value is hidden by a replicated sharing rather than one mask per
+online member: summand j is derivable by every member except j, from a
+long-term key, so any quorum can reconstruct it and losing one member costs
+nothing. Each vid therefore carries the assignment naming which slot
+supplies which summand.
+
+Per-slot input order (must match the engine program): own seed summands in
+spec order, then for each masked_vids entry its assigned summands in order,
+then the same for fresh_vids.
 """
 
 M = 2**48 - 1
@@ -51,6 +57,11 @@ class Planner:
             out.append([j, slot])
         return out
 
+    def hide(self, vid):
+        """Assignment hiding prepared value `vid` under a replicated
+        sharing: the same slot mapping the seed uses."""
+        return [vid, self.summand_slots()]
+
     def _seed_walk(self, index, ops, frames):
         """Ops walking the seed down to `index`, recording left-sibling
         frames [prefix, depth, new_vid, engine_src_id] along the way."""
@@ -74,8 +85,9 @@ class Planner:
         frames.append([prefix, 0, self.new_vid(), cur])
         outputs, out_vids = [], []
         for pfx, depth, vid, src in frames:
-            outputs.append({'id': src, 'kind': 'mask'})
-            spec['fresh_vids'].append(vid)
+            outputs.append({'id': src, 'kind': 'mask',
+                            'slots': self.summand_slots()})
+            spec['fresh_vids'].append(self.hide(vid))
             out_vids.append(vid)
             self.public['frames'].append([pfx, depth, vid])
         plan = {'summands': [{'id': 'seed',
@@ -97,16 +109,18 @@ class Planner:
         assert prefix == next_index
         outputs, out_vids = [], []
         for pfx, depth, vid, src in frames:
-            outputs.append({'id': src, 'kind': 'mask'})
-            spec['fresh_vids'].append(vid)
+            outputs.append({'id': src, 'kind': 'mask',
+                            'slots': self.summand_slots()})
+            spec['fresh_vids'].append(self.hide(vid))
             out_vids.append(vid)
             self.public['frames'].append([pfx, depth, vid])
         for c_r in range(self.public['next_release'],
                          self.public['next_commitment']):
             cur, _ = self._seed_walk(M - c_r, ops, [])
             re_vid = self.new_vid()
-            outputs.append({'id': cur, 'kind': 'mask'})
-            spec['fresh_vids'].append(re_vid)
+            outputs.append({'id': cur, 'kind': 'mask',
+                            'slots': self.summand_slots()})
+            spec['fresh_vids'].append(self.hide(re_vid))
             out_vids.append(re_vid)
             self.public['leaves'][str(c_r)] = re_vid
         plan = {'summands': [{'id': 'seed',
@@ -125,8 +139,9 @@ class Planner:
 
         def load(vid):
             if vid not in loaded and vid not in computed:
-                plan_masked.append({'id': vid, 'm': self.public['masked'][vid]})
-                spec['masked_vids'].append(vid)
+                plan_masked.append({'id': vid, 'm': self.public['masked'][vid],
+                                    'slots': self.summand_slots()})
+                spec['masked_vids'].append(self.hide(vid))
                 loaded.add(vid)
 
         frames = self.public['frames']
@@ -144,8 +159,9 @@ class Planner:
         leaf_pfx, _, leaf_vid = top
         assert leaf_pfx == index, (leaf_pfx, index)
         for op in ops:
-            outputs.append({'id': op['dst'], 'kind': 'mask'})
-            spec['fresh_vids'].append(op['dst'])
+            outputs.append({'id': op['dst'], 'kind': 'mask',
+                            'slots': self.summand_slots()})
+            spec['fresh_vids'].append(self.hide(op['dst']))
             out_vids.append(op['dst'])
         if not ops:
             load(leaf_vid)
@@ -158,8 +174,10 @@ class Planner:
     def release_plan(self, c):
         """Open the per-commitment secret for state c."""
         vid = self.public['leaves'][str(c)]
-        spec = {'summands': [], 'masked_vids': [vid], 'fresh_vids': []}
-        plan = {'masked': [{'id': vid, 'm': self.public['masked'][vid]}],
+        spec = {'summands': [], 'masked_vids': [self.hide(vid)],
+                'fresh_vids': []}
+        plan = {'masked': [{'id': vid, 'm': self.public['masked'][vid],
+                            'slots': self.summand_slots()}],
                 'outputs': [{'id': vid, 'kind': 'open'}]}
         self.public['next_release'] = c + 1
         return plan, spec

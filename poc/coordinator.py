@@ -231,25 +231,40 @@ class Coordinator:
     def release_leaf(self, c):
         """Reveal the prepared secret for state c in a single round.
 
-        No MPC: the members send the masks they hold, the adapter XORs them
-        into the public masked value, and the result is checked against the
-        point published for this state. That check is what makes a lying
-        member harmless, and it is the same equation the counterparty will
-        verify when the secret reaches them.
+        No MPC. The value is hidden by a replicated sharing whose summands
+        every member but one can derive, so the online quorum collectively
+        holds all of them. Each member sends what it can derive, duplicates
+        are compared, and the result is checked against the point published
+        for this state. The point check is what makes a lying member
+        harmless, and it is the same equation the counterparty verifies.
         """
         vid = self.public['leaves'][str(c)]
-        acc = int(self.public['masked'][vid], 16)
+        wanted = list(range(N_MEMBERS))
+        seen = {}
         for url in self.active_urls():
-            acc ^= int(post(url, '/reveal', {'vid': vid})['mask'], 16)
+            got = post(url, '/reveal', {'vid': vid, 'summands': wanted})
+            for j, val in got['summands'].items():
+                if j in seen and seen[j] != val:
+                    raise AssertionError(
+                        f'members disagree on summand {j} of state {c}')
+                seen[j] = val
+        missing = [j for j in wanted if str(j) not in seen]
+        if missing:
+            raise AssertionError(f'summands {missing} unavailable for state {c}')
+
+        acc = int(self.public['masked'][vid], 16)
+        for val in seen.values():
+            acc ^= int(val, 16)
         secret = decode_bytes(acc)
-        expected = self.public['points'].get(str(c))
+
+        expected = self.public.get('points', {}).get(str(c))
         if expected is not None:
             s = int.from_bytes(secret, 'big') % Q
-            got = point_export.ec_mul(s)
-            if [f'{got[0]:x}', f'{got[1]:x}'] != expected:  # noqa: E501
+            got_pt = point_export.ec_mul(s)
+            if [f'{got_pt[0]:x}', f'{got_pt[1]:x}'] != expected:
                 raise AssertionError(
                     f'released secret for state {c} does not match its '
-                    f'published point; a member supplied a bad mask')
+                    f'published point; a member supplied a bad summand')
         self.public['next_release'] = c + 1
         return secret
 
@@ -320,6 +335,10 @@ def main():
     ap.add_argument('--updates', type=int, default=6)
     ap.add_argument('--after', type=int, default=3)
     ap.add_argument('--mpspdz', default=os.path.expanduser('~/src/MP-SPDZ'))
+    ap.add_argument('--restore-on-change', action='store_true',
+                    help='rebuild the frontier from the seed after a quorum '
+                         'change. Not needed once the buffer is a replicated '
+                         'sharing; kept to measure what it used to cost.')
     ap.add_argument('--skip-crash', action='store_true',
                     help='skip the crash, quorum change and RESTORE. Over a '
                          'WAN the RESTORE is tens of sequential hashes and so '
@@ -402,13 +421,22 @@ def main():
         if args.skip_crash:
             print('== crash, quorum change and RESTORE skipped')
         else:
-            print('== crash: all volatile masks destroyed; member 2 offline')
+            print('== crash: volatile state destroyed; member 2 offline')
             coord.crash_all()
             coord.public['quorum'] = [0, 1, 3]
-            print('== quorum change to [0, 1, 3] + RESTORE from summands')
-            t = time.time()
-            hashes = coord.restore()
-            print(f'   restored with {hashes} hashes in {time.time() - t:.1f}s')
+            if args.restore_on_change:
+                print('== quorum change to [0, 1, 3], rebuilding from the seed')
+                t = time.time()
+                hashes = coord.restore()
+                print(f'   restored with {hashes} hashes in '
+                      f'{time.time() - t:.1f}s')
+            else:
+                print('== quorum change to [0, 1, 3], continuing without a '
+                      'rebuild')
+                print('   the prepared buffer is a replicated sharing, so the '
+                      'new quorum')
+                print('   derives every summand it needs and nothing has to '
+                      'be recomputed')
 
             print(f'== continuing: {args.after} updates with the new quorum')
             for _ in range(args.after):

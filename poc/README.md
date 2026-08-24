@@ -42,7 +42,11 @@ edges, so most need none and every 2^k-th needs k. Revealing a secret is not
 in either figure, because it no longer runs an MPC session at all (see
 docs/batching.md).
 
-The RESTORE rebuilds the frontier from the seed summands alone and
+A quorum change no longer needs a rebuild: prepared values are hidden under
+a replicated sharing, so the new quorum derives every summand it needs and
+the channel continues. `--restore-on-change` runs the old rebuild anyway, to
+measure what recovery used to cost. That rebuild still reconstructs the
+frontier from the seed summands alone and
 re-derives prepared-but-unreleased leaves, so the revocation pending at
 crash time still completes, byte-identically, under the new quorum.
 

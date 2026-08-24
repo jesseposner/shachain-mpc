@@ -27,6 +27,7 @@ Usage: member.py --port 9001 --workdir DIR --mpspdz DIR
 """
 import argparse
 import base64
+import hashlib
 import json
 import os
 import secrets
@@ -67,8 +68,14 @@ class State:
             if not os.path.exists(dst):
                 os.symlink(lib, dst)
         self.summands_file = os.path.join(workdir, 'summands.json')
+        self.maskkeys_file = os.path.join(workdir, 'maskkeys.json')
         self.masks_file = os.path.join(workdir, 'masks.json')
         self.summands = self._load(self.summands_file)
+        # Long-term keys for buffer summands. Key j is held by every member
+        # except j, so any quorum can derive every summand and losing one
+        # member loses nothing. This is what makes a prepared buffer survive
+        # a quorum change instead of needing a rebuild from the seed.
+        self.maskkeys = self._load(self.maskkeys_file)
         self.masks = self._load(self.masks_file)
 
     @staticmethod
@@ -77,6 +84,7 @@ class State:
 
     def save(self):
         json.dump(self.summands, open(self.summands_file, 'w'))
+        json.dump(self.maskkeys, open(self.maskkeys_file, 'w'))
         json.dump(self.masks, open(self.masks_file, 'w'))
 
 
@@ -119,10 +127,13 @@ def handle_setup(req):
     # (member-to-member; the coordinator never sees them).
     for j in req.get('originate', []):
         value = secrets.token_bytes(32).hex()
+        maskkey = secrets.token_bytes(32).hex()
         STATE.summands[str(j)] = value
+        STATE.maskkeys[str(j)] = maskkey
         for i, peer in enumerate(STATE.roster):
             if i != STATE.index and i != j:
-                data = json.dumps({'j': j, 'value': value}).encode()
+                data = json.dumps({'j': j, 'value': value,
+                                   'maskkey': maskkey}).encode()
                 r = urllib.request.Request(
                     peer['url'] + '/summand', data=data,
                     headers={'Content-Type': 'application/json'})
@@ -133,8 +144,24 @@ def handle_setup(req):
 
 def handle_summand(req):
     STATE.summands[str(req['j'])] = req['value']
+    if 'maskkey' in req:
+        STATE.maskkeys[str(req['j'])] = req['maskkey']
     STATE.save()
     return {'ok': True}
+
+
+def buffer_summand(j, vid):
+    """Summand j of the sharing that hides prepared value `vid`.
+
+    Derived from a long-term key rather than stored, so a buffer of any
+    depth costs no secret storage and no per-leaf distribution. Every
+    member except j can compute this, which is what lets a quorum change
+    happen without rebuilding the buffer.
+    """
+    key = STATE.maskkeys.get(str(j))
+    assert key is not None, f'no mask key {j} held'
+    digest = hashlib.sha256(bytes.fromhex(key) + vid.encode()).digest()
+    return encode_int(digest)
 
 
 def handle_reveal(req):
@@ -152,9 +179,13 @@ def handle_reveal(req):
     question, and that layer does not exist yet.
     """
     vid = req['vid']
-    if vid not in STATE.masks:
-        return {'ok': False, 'err': f'no mask held for {vid}'}
-    return {'ok': True, 'mask': STATE.masks[vid]}
+    have = {}
+    for j in req.get('summands', []):
+        if str(j) in STATE.maskkeys:
+            have[str(j)] = hex(buffer_summand(j, vid))
+    if not have:
+        return {'ok': False, 'err': f'no summands derivable for {vid}'}
+    return {'ok': True, 'summands': have}
 
 
 def handle_crash(_req):
@@ -166,21 +197,24 @@ def handle_crash(_req):
 
 def build_inputs(spec, slot):
     """Resolve the input spec into this member's ordered input integers.
-    Fresh masks are generated and staged; committed after the run succeeds."""
-    inputs, staged = [], {}
+
+    Buffer summands are derived from long-term keys, so nothing is staged
+    and nothing needs saving after a run: any quorum can recompute them."""
+    inputs = []
     for j, s in spec['summands']:
         if s == slot:
             value = STATE.summands.get(str(j))
             assert value is not None, f'missing summand {j}'
             inputs.append(encode_int(bytes.fromhex(value)))
-    for vid in spec['masked_vids']:
-        assert vid in STATE.masks, f'missing mask for {vid}'
-        inputs.append(int(STATE.masks[vid], 16))
-    for vid in spec['fresh_vids']:
-        r = secrets.randbits(256)
-        staged[vid] = hex(r)
-        inputs.append(r)
-    return inputs, staged
+    for vid, assignment in spec['masked_vids']:
+        for j, s in assignment:
+            if s == slot:
+                inputs.append(buffer_summand(j, vid))
+    for vid, assignment in spec['fresh_vids']:
+        for j, s in assignment:
+            if s == slot:
+                inputs.append(buffer_summand(j, vid))
+    return inputs, {}
 
 
 def handle_step(req):

@@ -104,7 +104,8 @@ watch. Measured on loopback, malicious 3-party replicated:
 | one shachain edge | ~1,635 | 65 s | measured on the WAN |
 | 48-edge channel open, computed | 77,151 | 54.5 min | measured on the WAN |
 | 48-edge channel open, stockpiled package | 3 online | **4.8 s** | measured on the WAN |
-| RESTORE after a quorum change | 77,151 | ~51 min | derived; 126 min measured before batching halved it |
+| quorum change, replicated buffer | **0** | **none** | measured: the channel continues without a rebuild |
+| rebuild from the seed (cold start only) | 77,151 | ~51 min | derived; 126 min measured before batching halved it |
 
 Round counts are loopback measurements, which is fine because a round count
 is a property of the circuit rather than the network. Wide-area figures are
@@ -122,6 +123,17 @@ a six-round MPC opening (`programs/release_only.mpc`). The one-round form
 replaces that session with plain messaging and so should come in at or below
 that figure, but the machines were gone before it existed. It deserves a live
 measurement before anyone quotes it.
+
+## Recovery costs nothing
+
+A prepared secret used to be hidden by one mask per online member, a 3-of-3
+sharing, so a single member dropping out destroyed the buffer and forced a
+77,151-round rebuild from the seed: about 51 minutes across three continents,
+with the channel frozen throughout. Prepared values are now hidden under a
+replicated sharing whose summands are derived from long-term keys, so any
+quorum can reconstruct them, a member can drop out with no effect, and the
+buffer costs no secret storage at all. See
+[docs/buffer-storage.md](docs/buffer-storage.md).
 
 ## Layout
 
