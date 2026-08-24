@@ -3,12 +3,11 @@ __pycache__/
 *.pem
 *.key
 
-# Anything naming a live node. Node addresses belong only in wan/nodes.txt,
-# which is never committed; nothing under results/ may contain one. These
-# rules are by pattern, not by exact path, because the first version of this
-# file matched only wan/nodes.txt and a later run leaked the same addresses
-# under results/.
+# Never commit anything naming a live node. Node addresses belong only in
+# wan/nodes.txt. These are patterns, not exact paths: the first version of
+# this file listed wan/nodes.txt alone, and a later run leaked the same
+# addresses under results/ as wg-pubkeys.txt. Result logs themselves are
+# kept, since they are the evidence for the published numbers.
 wan/nodes.txt
 wg-pubkeys.txt
 **/wg-pubkeys.txt
-results/wan-live/
