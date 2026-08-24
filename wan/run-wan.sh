@@ -67,7 +67,7 @@ if want mesh; then
   done < "$NODES"
 
   echo "=== mesh: generating keys ==="
-  : > "$OUT/wg-pubkeys.txt"
+  : > "$HERE/wg-pubkeys.txt"
   while read -r IDX R ID IP; do
     until $SSHN "$U@$IP" true 2>/dev/null; do sleep 5; done
     PUBKEY=$($SSHN "$U@$IP" '
@@ -79,10 +79,10 @@ if want mesh; then
       [ -s /etc/wireguard/priv ] || (umask 077; wg genkey | sudo tee /etc/wireguard/priv >/dev/null)
       sudo cat /etc/wireguard/priv | wg pubkey')
     [ -n "$PUBKEY" ] || { echo "no WireGuard key from member $IDX ($IP)"; exit 1; }
-    echo "$IDX $IP $PUBKEY" >> "$OUT/wg-pubkeys.txt"
+    echo "$IDX $IP $PUBKEY" >> "$HERE/wg-pubkeys.txt"
     echo "  member $IDX $PUBKEY"
   done < "$NODES"
-  [ "$(wc -l < "$OUT/wg-pubkeys.txt")" -eq 4 ] || { echo "expected 4 keys"; exit 1; }
+  [ "$(wc -l < "$HERE/wg-pubkeys.txt")" -eq 4 ] || { echo "expected 4 keys"; exit 1; }
 
   echo "=== mesh: configuring ==="
   while read -r IDX R ID IP; do
@@ -100,7 +100,7 @@ AllowedIPs = 10.99.0.$((PIDX + 1))/32
 Endpoint = $PIP:51820
 PersistentKeepalive = 25
 "
-    done < "$OUT/wg-pubkeys.txt"
+    done < "$HERE/wg-pubkeys.txt"
     echo "$CONF" | $SSH "$U@$IP" "sudo mkdir -p /etc/wireguard && \
       sudo tee /etc/wireguard/wg0.conf >/dev/null && \
       (sudo systemctl restart wg-quick@wg0 2>/dev/null || \

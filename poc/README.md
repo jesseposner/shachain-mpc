@@ -61,6 +61,12 @@ cross-region topology.
 
 - Nothing gates `release_leaf`: the authorization layer is the largest open
   work item and is deliberately absent here.
+- Member agents do not authenticate their caller. `/step` validates the
+  paths it writes and the binary it runs, and `--bind` can restrict the
+  listening address, but any peer that reaches the port can still destroy
+  volatile masks or overwrite a seed share. Coordinator-to-member
+  authentication (mTLS or a shared secret) is required before these agents
+  face anything but a private network.
 - Setup ships all TLS keys to every member and deals each summand from a
   single originator without duplicate-consistency checks; real setup is a
   verified distribution ceremony.

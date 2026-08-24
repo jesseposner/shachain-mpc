@@ -82,6 +82,29 @@ class State:
 
 STATE = None
 
+# Only these may be executed by a /step request. The binary name arrives from
+# the coordinator, so without a whitelist os.path.join lets a caller name any
+# path, including an absolute one.
+ALLOWED_BINARIES = {
+    'malicious-rep-field-party.x', 'replicated-field-party.x',
+    'malicious-rep-bin-party.x', 'replicated-bin-party.x',
+    'mal-rep-bmr-party.x', 'rep-bmr-party.x',
+    'malicious-shamir-party.x',
+}
+
+
+def safe_path(base, rel):
+    """Resolve rel under base, refusing anything that escapes it.
+
+    os.path.join discards base entirely for an absolute rel and happily
+    resolves '..', so a caller-supplied key could otherwise write to any
+    path this process can reach."""
+    base = os.path.realpath(base)
+    full = os.path.realpath(os.path.join(base, rel))
+    if full != base and not full.startswith(base + os.sep):
+        raise ValueError(f'path escapes the working directory: {rel!r}')
+    return full
+
 
 def handle_setup(req):
     STATE.index = req['index']
@@ -145,7 +168,7 @@ def handle_step(req):
     mode = req.get('mode', 'run')
     # 1. Materialize the compiled program.
     for rel, b64 in req['files'].items():
-        path = os.path.join(STATE.workdir, rel)
+        path = safe_path(STATE.workdir, rel)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'wb') as f:
             f.write(base64.b64decode(b64))
@@ -171,7 +194,10 @@ def handle_step(req):
         extra = extra + ['-G', pkg]
     elif mode == 'eval':
         extra = extra + ['-E', pkg]
-    cmd = [os.path.join(STATE.mpspdz, req['binary']),
+    binary = req['binary']
+    if binary not in ALLOWED_BINARIES:
+        return {'ok': False, 'err': f'binary not permitted: {binary!r}'}
+    cmd = [os.path.join(STATE.mpspdz, binary),
            str(slot), req['name'], '-h', req['party0_host'],
            '-pn', str(req['port'])] + extra
     out = subprocess.run(cmd, cwd=STATE.workdir, capture_output=True,
@@ -235,11 +261,16 @@ def main():
     ap.add_argument('--port', type=int, required=True)
     ap.add_argument('--workdir', required=True)
     ap.add_argument('--mpspdz', default=os.path.expanduser('~/src/MP-SPDZ'))
+    ap.add_argument('--bind', default='0.0.0.0',
+                    help='address to listen on. Prefer the mesh address; the '
+                         'default listens on every interface, which is only '
+                         'safe behind a private network.')
     args = ap.parse_args()
     os.makedirs(args.workdir, exist_ok=True)
     STATE = State(args.workdir, args.mpspdz)
-    server = HTTPServer(('0.0.0.0', args.port), Handler)
-    print(f'member agent on :{args.port}, workdir {args.workdir}', flush=True)
+    server = HTTPServer((args.bind, args.port), Handler)
+    print(f'member agent on {args.bind}:{args.port}, '
+          f'workdir {args.workdir}', flush=True)
     server.serve_forever()
 
 

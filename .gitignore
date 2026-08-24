@@ -1,7 +1,14 @@
 __pycache__/
 *.pyc
-
-# Live deployment state: instance IDs and public IPs, written by
-# wan/launch-instances.sh and removed by wan/teardown.sh.
-wan/nodes.txt
 *.pem
+*.key
+
+# Anything naming a live node. Node addresses belong only in wan/nodes.txt,
+# which is never committed; nothing under results/ may contain one. These
+# rules are by pattern, not by exact path, because the first version of this
+# file matched only wan/nodes.txt and a later run leaked the same addresses
+# under results/.
+wan/nodes.txt
+wg-pubkeys.txt
+**/wg-pubkeys.txt
+results/wan-live/

@@ -59,6 +59,8 @@ def decode_bytes(val):
 def decompress(hexpt):
     x = int(hexpt[2:], 16)
     y = pow(x * x * x + 7, (P_FIELD + 1) // 4, P_FIELD)
+    if (y * y - x * x * x - 7) % P_FIELD != 0:
+        raise ValueError('point is not on the curve')
     if y & 1 != int(hexpt[:2], 16) & 1:
         y = P_FIELD - y
     return (x, y)
