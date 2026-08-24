@@ -52,4 +52,5 @@ make -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu)" \
   rep-bmr-party.x mal-rep-bmr-party.x
 Scripts/setup-ssl.sh 3
 ln -sf "$HERE/programs/shachain_step.mpc" Programs/Source/
+ln -sf "$HERE/programs/release_only.mpc" Programs/Source/
 echo "MP-SPDZ ready at $MPSPDZ"

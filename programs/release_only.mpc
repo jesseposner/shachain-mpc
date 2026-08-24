@@ -1,0 +1,43 @@
+# The payment hot path on its own: reveal one already-prepared secret.
+#
+# This is exactly what the engine's release step does, with nothing else
+# around it. A prepared per-commitment secret lives as a masked tuple: a
+# public masked value, plus one secret mask held by each online member. To
+# reveal the secret the members input their masks, the circuit XORs them
+# into the public value, and the result is opened.
+#
+# XOR is free in secret-sharing MPC, so the whole cost is the input step and
+# the opening: two or three communication rounds. Everything expensive about
+# the shachain (deriving future secrets, the validity check, the conversion
+# to a curve scalar) happens ahead of time into a lookahead buffer and is
+# deliberately absent here.
+#
+# Argument: REPEAT, how many independent releases to do in one run
+# (default 1). Independent releases sit at the same circuit depth, so a
+# batch costs the same rounds as one and shows the per-release marginal
+# cost.
+from Compiler.GC.types import sbitvec, sbit
+
+REPEAT = int(program.args[1]) if len(program.args) > 1 else 1
+N_PARTIES = 3
+
+t256 = sbitvec.get_type(256)
+
+# Stand-in for the public masked value the adapter already holds.
+MASKED = 0x0101010101010101010101010101010101010101010101010101010101010101
+
+
+def release_one():
+    acc = t256(MASKED)
+    for player in range(N_PARTIES):
+        mask = t256.get_input_from(player)
+        acc = sbitvec.from_vec([a ^ b for a, b in zip(acc.v, mask.v)])
+    return acc
+
+
+start_timer(1)
+secrets = [release_one() for _ in range(REPEAT)]
+revealed = [s.reveal() for s in secrets]
+stop_timer(1)
+
+revealed[0].print_reg()

@@ -211,6 +211,12 @@ if want bench; then
 
     compile_all -B 256 shachain_step 1 100 0 0
     run_parties malicious-rep-bin-party.x shachain_step-1-100-0-0
+
+    # The payment hot path on its own: reveal one already-prepared secret.
+    compile_all -B 256 release_only 1
+    run_parties malicious-rep-bin-party.x release_only-1
+    compile_all -B 256 release_only 100
+    run_parties malicious-rep-bin-party.x release_only-100
   } 2>&1 | tee "$OUT/raw-benchmarks.txt"
 fi
 
