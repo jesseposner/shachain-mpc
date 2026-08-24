@@ -194,10 +194,10 @@ The release-authorization layer, which binds revocation to the channel state
 machine and is now the largest unbuilt piece, with several other items
 deferred into it (see [docs/todo.md](docs/todo.md)). Also absent: refreshing
 shares over the life of a channel, and authenticated coordinator-to-member
-calls. Two rows of the table above were measured only on the earlier system:
-channel open from a stockpiled package, and the six-round release form it is
-compared against, which failed in the second run for a reason since fixed
-(`32221ba`) and has not been re-run.
+calls. Channel open from a stockpiled package was measured only on the
+earlier system, as was the six-round release form it is compared against,
+which failed in the second run for a reason since fixed (`32221ba`) and has
+not been re-run.
 
 ## License
 
