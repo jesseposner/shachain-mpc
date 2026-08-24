@@ -154,15 +154,53 @@ for item in plan.get('masked', []):
         acc = xor_vec(acc, t256.get_input_from(player))
     values[item['id']] = acc
 
-# 2. Hash edges.
+# 2. Hash edges, grouped so that independent hashes cost one round-trip
+# rather than one each.
+#
+# Latency is charged per communication round, and a round carries as many
+# independent hashes as you care to put in it: 64 lanes cost 1,775 rounds
+# against 1,621 for a single lane. Issuing one call per edge, as this used
+# to, makes a plan cost its edge count in waits instead of its depth. That
+# is the difference between preparing 1,024 secrets in ten waits and in
+# 1,024 of them.
+#
+# An edge sits at one more level than its source, and every edge in a
+# tree expansion at the same level flips the same bit, so grouping by
+# (level, flip bit) yields batches that need no per-lane flip handling.
+ops = plan.get('ops', [])
+level = {vid: 0 for vid in values}
+for op in ops:                       # plans are emitted in dependency order
+    level[op['dst']] = level.get(op['src'], 0) + 1
+
+groups = {}
+for op in ops:
+    groups.setdefault((level[op['dst']], op['bit']), []).append(op)
+
+
+def combine(vals, n):
+    """N single-lane values -> one n-lane sbitvec."""
+    tn = sbits.get_type(n)
+    return [tn.bit_compose([vals[j].v[i] for j in range(n)])
+            for i in range(256)]
+
+
 start_timer(1)
-for op in plan.get('ops', []):
-    src = values[op['src']]
-    v = list(src.v)
-    k = bolt_flip_index(op['bit'])
-    v[k] = ~v[k]
-    h = sha256_lanes(sbitvec.from_vec(v), 1)
-    values[op['dst']] = sbitvec.from_vec(list(reversed(h.v)))
+for key in sorted(groups):           # level order keeps dependencies satisfied
+    batch = groups[key]
+    k = bolt_flip_index(key[1])
+    n = len(batch)
+    if n == 1:
+        v = list(values[batch[0]['src']].v)
+        v[k] = ~v[k]
+        h = sha256_lanes(sbitvec.from_vec(v), 1)
+        values[batch[0]['dst']] = sbitvec.from_vec(list(reversed(h.v)))
+    else:
+        v = combine([values[op['src']] for op in batch], n)
+        v[k] = ~v[k]
+        h = sha256_lanes(sbitvec.from_vec(v), n)
+        for j, op in enumerate(batch):
+            bits = [h.v[i].bit_decompose()[j] for i in range(256)]
+            values[op['dst']] = sbitvec.from_vec(list(reversed(bits)))
 stop_timer(1)
 
 # 3. Outputs, in plan order. The driver parses revealed registers in the

@@ -91,14 +91,23 @@ RESTORE from the seed summands, after which the channel continues
 byte-identically (pending pre-crash revocations included). The same agents
 deploy across machines for the WAN run. See [poc/README.md](poc/README.md).
 
-## Known limitation: the engine does not batch
+## Rounds per operation
 
-Independent hashes are free if issued as one vectorised call and full price
-if issued separately (measured: 8 chains in 16,280 rounds against 16,119 for
-1; 4 chains as separate calls in 64,399). The engine currently issues one
-call per operation, which doubles RESTORE and puts bulk precomputation out
-of reach. See [docs/batching.md](docs/batching.md) for the measurements and
-the fix.
+Wide-area cost is round count times latency, so rounds are the number to
+watch. Measured on loopback, malicious 3-party replicated:
+
+| operation | rounds | at this WAN's 40 ms per round |
+|---|---:|---:|
+| **reveal a prepared secret (a payment)** | **1** | **~0.2 s, measured 0.18** |
+| prepare a leaf: validity check and scalar conversion | 58 | ~2.3 s, background |
+| one shachain edge | ~1,610 | ~65 s, background |
+| 48-edge channel open | 77,151 | ~52 min, or 4.8 s from a stockpiled package |
+| RESTORE after a quorum change | 77,151 | ~51 min |
+
+A payment costs one round because revealing a prepared secret is not a
+computation: the members send the masks they hold and the adapter checks the
+result against the point already published. Everything else is background
+work feeding a lookahead buffer. See [docs/batching.md](docs/batching.md).
 
 ## Layout
 

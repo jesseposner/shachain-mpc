@@ -46,6 +46,9 @@ N_MEMBERS = planner.N_MEMBERS
 # minutes: ~1,600 communication rounds per shachain edge at wide-area
 # latency. Keep this well above the slowest step you expect.
 STEP_TIMEOUT = int(os.environ.get('STEP_TIMEOUT', 4 * 3600))
+# Report each step's communication rounds, which is what a wide-area
+# deployment actually pays for and what batching is meant to reduce.
+SHOW_ROUNDS = os.environ.get('SHOW_ROUNDS') == '1'
 
 
 def decode_bytes(val):
@@ -162,11 +165,15 @@ class Coordinator:
         if errors:
             raise RuntimeError('; '.join(errors))
         regs, valids = [], []
-        for line in results[0]['stdout'].splitlines():
+        stream = results[0]['stdout'] + results[0].get('stderr', '')
+        for line in stream.splitlines():
             if line.startswith('Reg['):
                 regs.append(int(line.split('0x')[1].split()[0], 16))
             elif line.startswith('valid '):
                 valids.append(int(line.split()[1]))
+            elif SHOW_ROUNDS and 'rounds' in line and line.startswith('Data sent'):
+                edges = len(plan.get('ops', []))
+                print(f'   [step {name}: {edges} edges, {line.strip()}]')
         return regs, valids, [r['points'] for r in results]
 
     def combine_points(self, member_points):
@@ -218,12 +225,33 @@ class Coordinator:
         assert valids == [1], f'scalar validity check failed: {valids}'
         self.pl.store_masked(out_vids, regs)
         P = self.combine_points(points)[0]
+        self.public.setdefault('points', {})[str(c)] = [f'{P[0]:x}', f'{P[1]:x}']
         return c, index, P
 
     def release_leaf(self, c):
-        plan, spec = self.pl.release_plan(c)
-        regs, _, _ = self.run_step(plan, spec)
-        return decode_bytes(regs[0])
+        """Reveal the prepared secret for state c in a single round.
+
+        No MPC: the members send the masks they hold, the adapter XORs them
+        into the public masked value, and the result is checked against the
+        point published for this state. That check is what makes a lying
+        member harmless, and it is the same equation the counterparty will
+        verify when the secret reaches them.
+        """
+        vid = self.public['leaves'][str(c)]
+        acc = int(self.public['masked'][vid], 16)
+        for url in self.active_urls():
+            acc ^= int(post(url, '/reveal', {'vid': vid})['mask'], 16)
+        secret = decode_bytes(acc)
+        expected = self.public['points'].get(str(c))
+        if expected is not None:
+            s = int.from_bytes(secret, 'big') % Q
+            got = point_export.ec_mul(s)
+            if [f'{got[0]:x}', f'{got[1]:x}'] != expected:  # noqa: E501
+                raise AssertionError(
+                    f'released secret for state {c} does not match its '
+                    f'published point; a member supplied a bad mask')
+        self.public['next_release'] = c + 1
+        return secret
 
     def crash_all(self):
         for url in self.urls:

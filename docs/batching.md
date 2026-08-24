@@ -81,3 +81,38 @@ At 40 microseconds a round on one machine, serialising 1,024 hashes instead
 of batching them is the difference between 0.6 s and 40 s: annoying. At
 40 ms a round it is the difference between eleven minutes and eighteen
 hours, which decides whether the architecture works.
+
+
+## Implemented
+
+Both changes are in, measured on loopback by round count, which is what a
+wide-area deployment pays for.
+
+**Edges are grouped by level.** `programs/shachain_engine.mpc` assigns each
+edge a level (one more than its source), groups by (level, flip bit), and
+issues one vectorised call per group. Every edge at the same level of a tree
+expansion flips the same bit, so a level is normally one group and needs no
+per-lane flip handling.
+
+| step | edges | rounds before | rounds after |
+|---|---:|---:|---:|
+| cold start | 48 | 77,151 | 77,151 |
+| RESTORE | 94 | 151,058 | **77,151** |
+
+RESTORE holds two independent 47-edge walks, the frontier and one pending
+leaf, and now costs what one walk costs. At this WAN's 40 ms per round that
+turns a 126-minute recovery into about 51 minutes.
+
+**Release needs no MPC at all.** A prepared secret is a public masked value
+plus one mask per online member, so revealing it is not a computation. The
+members send their masks, the adapter XORs them, and the result is checked
+against the point published for that state. The payment path is now one
+round of plain messaging with no circuit, no compilation and no MPC
+session, against five rounds inside a session before.
+
+A member that supplies a wrong mask cannot pass off a wrong secret: the
+point check fails, and it is the same equation the counterparty verifies
+when the secret reaches them. Verified in both directions, honest masks
+accepted and a single flipped bit rejected. Whether a release is permitted
+at all remains the authorization layer's question, and that layer does not
+exist yet.

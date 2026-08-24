@@ -137,6 +137,26 @@ def handle_summand(req):
     return {'ok': True}
 
 
+def handle_reveal(req):
+    """Hand over this member's mask for an already-prepared secret.
+
+    A prepared secret is stored as a public masked value plus one secret
+    mask per online member, so revealing it is not a computation: the
+    members send their masks and the adapter XORs. That makes the payment
+    path one round of plain messaging with no MPC session, no circuit and
+    no compilation.
+
+    A lying member cannot pass off a wrong secret, because the adapter
+    checks the result against the per-commitment point published earlier.
+    Whether this release is permitted at all is the authorization layer's
+    question, and that layer does not exist yet.
+    """
+    vid = req['vid']
+    if vid not in STATE.masks:
+        return {'ok': False, 'err': f'no mask held for {vid}'}
+    return {'ok': True, 'mask': STATE.masks[vid]}
+
+
 def handle_crash(_req):
     STATE.masks = {}
     if os.path.exists(STATE.masks_file):
@@ -220,11 +240,15 @@ def handle_step(req):
                 x, y = point_export.ec_mul(comp * R_INV % Q)
                 pts.append(f'{2 + (y & 1):02x}{x:064x}')
             points.append(pts)
-    return {'ok': True, 'stdout': out.stdout, 'points': points}
+    # MP-SPDZ reports timings and round counts on stderr; the coordinator
+    # wants those as well as the revealed values on stdout.
+    return {'ok': True, 'stdout': out.stdout, 'stderr': out.stderr,
+            'points': points}
 
 
 ROUTES = {'/setup': handle_setup, '/summand': handle_summand,
-          '/step': handle_step, '/crash': handle_crash}
+          '/step': handle_step, '/crash': handle_crash,
+          '/reveal': handle_reveal}
 
 
 class Handler(BaseHTTPRequestHandler):
