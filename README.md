@@ -98,7 +98,7 @@ watch. Measured on loopback, malicious 3-party replicated:
 
 | operation | rounds | at this WAN's 40 ms per round |
 |---|---:|---:|
-| **reveal a prepared secret (a payment)** | **1** | **~0.2 s, measured 0.18** |
+| **reveal a prepared secret (a payment)** | **1** | **one round trip, so ~0.14 s on this WAN's slowest leg** |
 | prepare a leaf: validity check and scalar conversion | 58 | ~2.3 s, background |
 | one shachain edge | ~1,610 | ~65 s, background |
 | 48-edge channel open | 77,151 | ~52 min, or 4.8 s from a stockpiled package |
@@ -108,6 +108,13 @@ A payment costs one round because revealing a prepared secret is not a
 computation: the members send the masks they hold and the adapter checks the
 result against the point already published. Everything else is background
 work feeding a lookahead buffer. See [docs/batching.md](docs/batching.md).
+
+The one-round figure is a round count, not a wide-area measurement. What was
+measured over the WAN, at 0.18 s, is the earlier form of the same operation:
+a six-round MPC opening (`programs/release_only.mpc`). The one-round form
+replaces that session with plain messaging and so should land at or below
+that figure, but the machines were gone before it existed. It deserves a live
+measurement before anyone quotes it.
 
 ## Layout
 
