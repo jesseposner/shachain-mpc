@@ -209,9 +209,13 @@ mitigation for the denial path.
 
 ## Tier 4 — Validation gaps
 
-- **WAN confirmation.** The headline claim — package open in two rounds,
-  latency-independent — is still unconfirmed (`results/bmr-notes.md:116`). A run
-  is in flight; the round-bound Rep3 prediction looks confirmed so far.
+- ~~**WAN confirmation.** The headline claim, package open in two rounds,
+  latency-independent, is still unconfirmed (`results/bmr-notes.md:116`).~~
+  **CONFIRMED, at three rounds rather than two.** Both cross-region runs have
+  landed. A stockpiled package evaluated in 4.8 s across three continents,
+  against 54.5 minutes to compute the same 48 edges
+  (`results/wan-20260823.md:85`), in three online rounds and 8.7 KB
+  (`docs/findings.md:85`).
 - **Two WAN configurations skipped deliberately**: `mal-rep-bin` K=48 and
   in-session BMR garbling K=48 (`wan/README.md:101`). Model-derived only.
 - **daBit binding assumed, not re-proven** (`docs/findings.md:63`): "We measured
