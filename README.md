@@ -135,13 +135,14 @@ dealing and tagged hashing byte-for-byte from `src/modules/iceberg`, checked
 against the midstates its C hard-codes, and derives shachain values under
 tags of their own so they cannot collide with signing shares.
 
-Setup's security is therefore Iceberg's key generation's, rather than a
+Setup's security is Iceberg's key generation's, rather than that of a
 second scheme beside it. See [docs/key-material.md](docs/key-material.md).
 
 ## Recovery costs nothing
 
-A prepared secret used to be hidden by one mask per online member, a 3-of-3
-sharing, so a single member dropping out destroyed the buffer and forced a
+A prepared secret was originally hidden by one mask per online member, a
+3-of-3 sharing, so a single member dropping out destroyed the buffer and
+forced a
 77,151-round rebuild from the seed: about 51 minutes across three continents,
 with the channel frozen throughout. Prepared values are now hidden under a
 replicated sharing whose summands are derived from long-term keys, so any

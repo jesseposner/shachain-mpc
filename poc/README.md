@@ -31,7 +31,7 @@ spawns four member agents on localhost and runs:
 == pre-garbled channel-open package stockpiled      ~23 s, before the seed is used
 == channel open via stockpiled garbled package      ~2 s
 == steady state: 6 updates                          0.3 s, or ~5 s when the tree carries
-== crash: all volatile masks destroyed; member 2 offline
+== crash: volatile state destroyed; member 2 offline
 == quorum change to [0, 1, 3] + RESTORE             92 hashes, 17.6 s
 == continuing: 3 updates with the new quorum
 == distributed PoC complete in ~59 s: LDK accepted every point and secret
@@ -72,13 +72,13 @@ cross-region topology.
   work item and is deliberately absent here.
 - Member agents do not authenticate their caller. `/step` validates the
   paths it writes and the binary it runs, and `--bind` can restrict the
-  listening address, but any peer that reaches the port can still destroy
-  volatile masks or overwrite a seed share. Coordinator-to-member
-  authentication (mTLS or a shared secret) is required before these agents
-  face anything but a private network.
-- Setup ships all TLS keys to every member and deals each summand from a
-  single originator without duplicate-consistency checks; real setup is a
-  verified distribution ceremony.
+  listening address, but any peer that reaches the port can still overwrite
+  a member's Iceberg seeds. Coordinator-to-member authentication (mTLS or a
+  shared secret) is required before these agents face anything but a private
+  network.
+- Setup ships all TLS keys to every member, and models Iceberg's trusted
+  dealer rather than running its distributed key generation. The key
+  material itself is Iceberg's, byte-for-byte; see docs/key-material.md.
 - Per-step timing on the coordinator's critical path is dominated by
   MP-SPDZ compilation, not MPC; a production engine compiles step templates
   once.

@@ -104,9 +104,10 @@ leaf, and now costs what one walk costs. At this WAN's 40 ms per round that
 turns a 126-minute recovery into about 51 minutes.
 
 **Release needs no MPC at all.** A prepared secret is a public masked value
-plus one mask per online member, so revealing it is not a computation. The
-members send their masks, the adapter XORs them, and the result is checked
-against the point published for that state. The payment path is now one
+plus a replicated sharing of summands, so revealing it is not a computation.
+The members send the summands they hold, the adapter compares the copies it
+receives and XORs, and the result is checked against the point published for
+that state. The payment path is now one
 round of plain messaging with no circuit, no compilation and no MPC
 session, against five rounds inside a session before.
 
