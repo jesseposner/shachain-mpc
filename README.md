@@ -105,6 +105,7 @@ watch. Measured on loopback, malicious 3-party replicated:
 | 48-edge channel open, computed | 77,151 | 54.5 min | measured on the WAN |
 | 48-edge channel open, stockpiled package | 3 online | **4.8 s** | measured on the WAN |
 | quorum change, replicated buffer | **0** | **none** | measured: the channel continues without a rebuild |
+| buffer refill, 1,024 secrets | ~16,800 | ~11 min | derived; 97% of it is hashing, and it buys 1,024 payments |
 | rebuild from the seed (cold start only) | 77,151 | ~51 min | derived; 126 min measured before batching halved it |
 
 Round counts are loopback measurements, which is fine because a round count

@@ -116,3 +116,54 @@ when the secret reaches them. Verified in both directions, honest masks
 accepted and a single flipped bit rejected. Whether a release is permitted
 at all remains the authorization layer's question, and that layer does not
 exist yet.
+
+## Where the remaining time goes
+
+Measured rounds for the two non-hashing parts of preparing a leaf, against
+the number of leaves prepared in one step:
+
+| leaves | validity check | Boolean to Z_q |
+|---:|---:|---:|
+| 1 | 16 | 31 |
+| 10 | 16 | 31 |
+| 100 | 16 | 58 |
+| 1,000 | **16** | 436 |
+
+The validity check is flat: sixteen rounds whether you check one scalar or a
+thousand, because the tree comparator vectorises perfectly. The conversion is
+flat to ten and then grows sublinearly, reaching 0.44 rounds per leaf at a
+thousand against 31 unbatched. Its traffic does scale linearly, 0.35 MB to
+92 MB, which is the real constraint on how large a refill batch should be.
+
+So refilling a 1,024-leaf buffer costs:
+
+| | rounds | share |
+|---|---:|---:|
+| hashing, ten tree levels | 16,350 | 97% |
+| conversion | ~436 | 2.6% |
+| validity check | 16 | 0.1% |
+
+Both of the parts that looked worth optimising are already noise. Refill is
+almost entirely SHA-256 depth, and the direct attack on that depth failed
+(see experiments/README.md). What remains is either carry-save adder trees
+inside the hash, or pre-garbling the subtree expansion the way channel open
+is already pre-garbled.
+
+## Sustained throughput per channel
+
+A refill of 2^k leaves costs k tree levels, so k x 1,635 rounds, and buys
+2^k payments. At this WAN's 40 ms per round:
+
+| buffer depth | refill time | payments bought | sustained rate |
+|---:|---:|---:|---:|
+| 64 | 6.5 min | 64 | 1 per 6.1 s |
+| 1,024 | 11 min | 1,024 | 1 per 0.64 s |
+| 4,096 | 13 min | 4,096 | 1 per 0.19 s |
+
+Deeper buffers are strictly better, because the cost is the depth and the
+benefit is the width. The limits are refill traffic, which grows with the
+batch, and MP-SPDZ's compiler, which holds the whole circuit in memory. A
+production engine compiling step templates once would remove the second.
+
+None of this touches payment latency, which is one round regardless: the
+buffer only has to stay ahead of consumption.
