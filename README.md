@@ -91,6 +91,15 @@ RESTORE from the seed summands, after which the channel continues
 byte-identically (pending pre-crash revocations included). The same agents
 deploy across machines for the WAN run. See [poc/README.md](poc/README.md).
 
+## Known limitation: the engine does not batch
+
+Independent hashes are free if issued as one vectorised call and full price
+if issued separately (measured: 8 chains in 16,280 rounds against 16,119 for
+1; 4 chains as separate calls in 64,399). The engine currently issues one
+call per operation, which doubles RESTORE and puts bulk precomputation out
+of reach. See [docs/batching.md](docs/batching.md) for the measurements and
+the fix.
+
 ## Layout
 
 ```
