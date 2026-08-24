@@ -72,4 +72,28 @@ for s in ('01'*32, '02'*32, '03'*32):
   fi
 }
 lane_check
+
+# The setup ceremony must refuse a contributor that reveals something other
+# than what it committed to, and must refuse holders that end up with
+# different summands. Both are availability failures rather than theft, but
+# either leaves a channel that cannot advance.
+ceremony_check() {
+  for fault in badreveal equivocate badcombine; do
+    out=$(cd "$HERE" && CEREMONY_FAULT=$fault python3 poc/coordinator.py \
+          --local --updates 1 --after 0 --skip-crash 2>&1 || true)
+    case "$out" in
+      *"does not match its commitment"*|*"computed different values"*)
+        echo "PASS ceremony rejects $fault" ;;
+      *)
+        echo "FAIL ceremony accepted $fault"; fail=1 ;;
+    esac
+  done
+  out=$(cd "$HERE" && python3 poc/coordinator.py --local --updates 1 \
+        --after 0 --skip-crash 2>&1 || true)
+  case "$out" in
+    *"every holder agreeing"*) echo "PASS ceremony accepts an honest run" ;;
+    *) echo "FAIL ceremony rejected an honest run"; fail=1 ;;
+  esac
+}
+ceremony_check
 exit $fail

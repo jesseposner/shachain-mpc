@@ -125,6 +125,17 @@ replaces that session with plain messaging and so should come in at or below
 that figure, but the machines were gone before it existed. It deserves a live
 measurement before anyone quotes it.
 
+## Setup is a ceremony, not a hand-off
+
+Summand j of the seed used to come from one originator, so a weak generator
+at that member handed the whole seed to anyone compromising a single other
+member, and nothing stopped an originator sending different bytes to
+different holders. Now every holder contributes, contributions are committed
+before being revealed, and holders publish digests that must agree. Three
+faults are exercised in the suite: a mismatched reveal, an equivocating
+contributor, and a holder that keeps something else. See
+[docs/setup-ceremony.md](docs/setup-ceremony.md).
+
 ## Recovery costs nothing
 
 A prepared secret used to be hidden by one mask per online member, a 3-of-3

@@ -70,6 +70,9 @@ class State:
         self.summands_file = os.path.join(workdir, 'summands.json')
         self.maskkeys_file = os.path.join(workdir, 'maskkeys.json')
         self.masks_file = os.path.join(workdir, 'masks.json')
+        self.sid = ''
+        self.contrib = {}
+        self.inbox = {}
         self.summands = self._load(self.summands_file)
         # Long-term keys for buffer summands. Key j is held by every member
         # except j, so any quorum can derive every summand and losing one
@@ -140,6 +143,144 @@ def handle_setup(req):
                 urllib.request.urlopen(r, timeout=30).read()
     STATE.save()
     return {'ok': True}
+
+
+# ---- setup ceremony ---------------------------------------------------
+#
+# Summand j is held by every member except j. Two things have to be true of
+# it: nobody chooses it, and every holder ends up with the same bytes.
+#
+# The original setup satisfied neither. One originator generated each
+# summand alone, so a weak generator at that one member handed the whole
+# seed to anyone who compromised a single other member, which is a failure
+# the corruption model does not even count. And an originator could send
+# different bytes to different holders, so different quorums would derive
+# different chains.
+#
+# So: every holder of summand j contributes to it, and the summand is the
+# XOR of those contributions, which is uniform if any one contributor's
+# generator is sound. Contributions are committed before they are revealed,
+# so nobody can see others' values and then pick their own to steer the
+# result. Finally every holder publishes a digest of the summand it
+# computed, and the coordinator refuses to continue unless all holders of a
+# summand agree, which is what catches an equivocating contributor.
+#
+# One contribution covers both the seed summand and the buffer mask key.
+
+
+def _commit(contribution, nonce, sid, frm, j):
+    return hashlib.sha256(
+        contribution + nonce + sid.encode()
+        + f'|{frm}|{j}'.encode()).hexdigest()
+
+
+def handle_ceremony_commit(req):
+    """Phase one: generate contributions and publish commitments to them."""
+    STATE.index = req['index']
+    STATE.roster = req['roster']
+    STATE.sid = req['sid']
+    pd = os.path.join(STATE.workdir, 'Player-Data')
+    for name, b64 in req.get('certs', {}).items():
+        with open(os.path.join(pd, name), 'wb') as f:
+            f.write(base64.b64decode(b64))
+    if subprocess.run(['openssl', 'rehash', pd],
+                      capture_output=True).returncode:
+        subprocess.run(['c_rehash', pd], capture_output=True, check=True)
+
+    STATE.contrib = {}
+    commitments = {}
+    for j in range(len(STATE.roster)):
+        if j == STATE.index:
+            continue                      # a member does not hold summand j=itself
+        contribution = secrets.token_bytes(64)   # 32 seed + 32 mask key
+        nonce = secrets.token_bytes(32)
+        STATE.contrib[j] = (contribution, nonce)
+        commitments[str(j)] = _commit(contribution, nonce, STATE.sid,
+                                      STATE.index, j)
+    STATE.save()
+    return {'ok': True, 'commitments': commitments}
+
+
+def handle_contribution(req):
+    """A co-holder's revealed contribution to a summand we also hold."""
+    STATE.inbox.setdefault(int(req['j']), {})[int(req['frm'])] = (
+        req['contribution'], req['nonce'])
+    return {'ok': True}
+
+
+# Fault injection, for testing that the ceremony's checks actually fire.
+# CEREMONY_FAULT=badreveal   reveal a contribution that does not match the
+#                            commitment already published
+# CEREMONY_FAULT=equivocate  send different bytes to different holders
+# CEREMONY_FAULT=badcombine  verify honestly, then store a different summand
+CEREMONY_FAULT = os.environ.get('CEREMONY_FAULT', '')
+
+
+def handle_ceremony_reveal(req):
+    """Phase two: reveal to co-holders, verify, combine, and report a digest
+    of each summand so the coordinator can detect equivocation."""
+    commitments = req['commitments']          # {from: {j: commitment}}
+    n = len(STATE.roster)
+
+    first = True
+    for j, (contribution, nonce) in STATE.contrib.items():
+        for i, peer in enumerate(STATE.roster):
+            if i == STATE.index or i == j:
+                continue                      # i does not hold summand j
+            sent = contribution
+            if CEREMONY_FAULT == 'badreveal':
+                sent = bytes([contribution[0] ^ 1]) + contribution[1:]
+            elif CEREMONY_FAULT == 'equivocate' and first:
+                sent = bytes([contribution[0] ^ 1]) + contribution[1:]
+                first = False
+            body = json.dumps({'j': j, 'frm': STATE.index,
+                               'contribution': sent.hex(),
+                               'nonce': nonce.hex()}).encode()
+            r = urllib.request.Request(
+                peer['url'] + '/contribution', data=body,
+                headers={'Content-Type': 'application/json'})
+            urllib.request.urlopen(r, timeout=30).read()
+    return {'ok': True, 'stage': 'revealed'}
+
+
+def handle_ceremony_combine(req):
+    commitments = req['commitments']
+    n = len(STATE.roster)
+    digests = {}
+    for j in range(n):
+        if j == STATE.index:
+            continue
+        parts = {STATE.index: STATE.contrib[j]}
+        for frm, (c_hex, nonce_hex) in STATE.inbox.get(j, {}).items():
+            parts[frm] = (bytes.fromhex(c_hex), bytes.fromhex(nonce_hex))
+        expected_holders = {i for i in range(n) if i != j}
+        if set(parts) != expected_holders:
+            return {'ok': False,
+                    'err': f'summand {j}: contributions from {sorted(parts)}, '
+                           f'expected {sorted(expected_holders)}'}
+        combined = bytes(64)
+        for frm in sorted(parts):
+            contribution, nonce = parts[frm]
+            want = commitments[str(frm)][str(j)]
+            if _commit(contribution, nonce, STATE.sid, frm, j) != want:
+                return {'ok': False,
+                        'err': f'member {frm} revealed a contribution to '
+                               f'summand {j} that does not match its '
+                               f'commitment'}
+            combined = bytes(a ^ b for a, b in zip(combined, contribution))
+        if CEREMONY_FAULT == 'badcombine' and j == min(
+                x for x in range(n) if x != STATE.index):
+            # every contribution verified, but this holder keeps something
+            # else: only the cross-check of holders' digests catches it
+            combined = bytes([combined[0] ^ 1]) + combined[1:]
+        STATE.summands[str(j)] = combined[:32].hex()
+        STATE.maskkeys[str(j)] = combined[32:].hex()
+        digests[str(j)] = hashlib.sha256(
+            combined + STATE.sid.encode() + b'|summand-digest').hexdigest()
+    STATE.contrib = {}
+    STATE.inbox = {}
+    STATE.save()
+    return {'ok': True, 'digests': digests}
 
 
 def handle_summand(req):
@@ -282,7 +423,11 @@ def handle_step(req):
 
 ROUTES = {'/setup': handle_setup, '/summand': handle_summand,
           '/step': handle_step, '/crash': handle_crash,
-          '/reveal': handle_reveal}
+          '/reveal': handle_reveal,
+          '/ceremony_commit': handle_ceremony_commit,
+          '/contribution': handle_contribution,
+          '/ceremony_reveal': handle_ceremony_reveal,
+          '/ceremony_combine': handle_ceremony_combine}
 
 
 class Handler(BaseHTTPRequestHandler):

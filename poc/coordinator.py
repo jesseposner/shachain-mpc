@@ -20,6 +20,7 @@ Usage: coordinator.py --local [--updates 6 --after 3]
 import argparse
 import base64
 import glob
+import hashlib
 import json
 import os
 import shutil
@@ -93,6 +94,20 @@ class Coordinator:
         return [self.urls[i] for i in self.public['quorum']]
 
     def setup(self):
+        """Run the setup ceremony.
+
+        Every holder of a summand contributes to it, so the summand is
+        uniform if any one contributor's generator is sound, rather than
+        depending on a single originator's. Contributions are committed
+        before being revealed, so nobody can see the others and then choose
+        their own to steer the result. Every holder then publishes a digest
+        of the summand it computed, and we refuse to continue unless all
+        holders of a summand agree, which is what catches a contributor that
+        sent different bytes to different holders.
+
+        Note what the coordinator does and does not see: commitments and
+        digests, never a contribution or a summand.
+        """
         certs = {}
         for i in range(QUORUM):
             for ext in ('pem', 'key'):
@@ -102,13 +117,35 @@ class Coordinator:
                     certs[name] = base64.b64encode(f.read()).decode()
         roster = [{'url': u, 'mpc_host': h}
                   for u, h in zip(self.urls, self.mpc_hosts)]
-        # summand j originated by the lowest-indexed member that holds it
-        originate = {i: [] for i in range(N_MEMBERS)}
-        for j in range(N_MEMBERS):
-            originate[0 if j != 0 else 1].append(j)
+        sid = self.public.setdefault(
+            'sid', hashlib.sha256(''.join(self.urls).encode()).hexdigest())
+
+        commitments = {}
         for i, url in enumerate(self.urls):
-            post(url, '/setup', {'index': i, 'roster': roster,
-                                 'originate': originate[i], 'certs': certs})
+            r = post(url, '/ceremony_commit',
+                     {'index': i, 'roster': roster, 'sid': sid,
+                      'certs': certs})
+            commitments[str(i)] = r['commitments']
+
+        for url in self.urls:
+            post(url, '/ceremony_reveal', {'commitments': commitments})
+
+        digests = {}
+        for i, url in enumerate(self.urls):
+            r = post(url, '/ceremony_combine', {'commitments': commitments})
+            for j, d in r['digests'].items():
+                digests.setdefault(j, {})[i] = d
+
+        for j, by_member in digests.items():
+            holders = {i for i in range(N_MEMBERS) if i != int(j)}
+            if set(by_member) != holders:
+                raise AssertionError(
+                    f'summand {j}: digests from {sorted(by_member)}, '
+                    f'expected holders {sorted(holders)}')
+            if len(set(by_member.values())) != 1:
+                raise AssertionError(
+                    f'summand {j}: its holders computed different values')
+        print(f'   ceremony: {len(digests)} summands, every holder agreeing')
 
     def compile_step(self, plan, domain='field'):
         self.nonce += 1
