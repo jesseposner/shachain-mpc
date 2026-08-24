@@ -96,13 +96,20 @@ deploy across machines for the WAN run. See [poc/README.md](poc/README.md).
 Wide-area cost is round count times latency, so rounds are the number to
 watch. Measured on loopback, malicious 3-party replicated:
 
-| operation | rounds | at this WAN's 40 ms per round |
-|---|---:|---:|
-| **reveal a prepared secret (a payment)** | **1** | **one round trip, so ~0.14 s on this WAN's slowest leg** |
-| prepare a leaf: validity check and scalar conversion | 58 | ~2.3 s, background |
-| one shachain edge | ~1,610 | ~65 s, background |
-| 48-edge channel open | 77,151 | ~52 min, or 4.8 s from a stockpiled package |
-| RESTORE after a quorum change | 77,151 | ~51 min |
+| operation | rounds | wide-area cost | how we know |
+|---|---:|---:|---|
+| **reveal a prepared secret (a payment)** | **1** | ~0.14 s | derived: one round trip on the slowest leg |
+| the same reveal, earlier six-round MPC form | 6 | 0.18 s | measured on the WAN |
+| prepare a leaf (validity check, scalar conversion) | 58 | ~2.3 s | derived from 40 ms per round |
+| one shachain edge | ~1,635 | 65 s | measured on the WAN |
+| 48-edge channel open, computed | 77,151 | 54.5 min | measured on the WAN |
+| 48-edge channel open, stockpiled package | 3 online | **4.8 s** | measured on the WAN |
+| RESTORE after a quorum change | 77,151 | ~51 min | derived; 126 min measured before batching halved it |
+
+Round counts are loopback measurements, which is fine because a round count
+is a property of the circuit rather than the network. Wide-area figures are
+either measured on four cross-region nodes or derived by multiplying rounds
+by the 40 ms per round those nodes exhibited, and the table says which.
 
 A payment costs one round because revealing a prepared secret is not a
 computation: the members send the masks they hold and the adapter checks the
@@ -112,7 +119,7 @@ work feeding a lookahead buffer. See [docs/batching.md](docs/batching.md).
 The one-round figure is a round count, not a wide-area measurement. What was
 measured over the WAN, at 0.18 s, is the earlier form of the same operation:
 a six-round MPC opening (`programs/release_only.mpc`). The one-round form
-replaces that session with plain messaging and so should land at or below
+replaces that session with plain messaging and so should come in at or below
 that figure, but the machines were gone before it existed. It deserves a live
 measurement before anyone quotes it.
 
