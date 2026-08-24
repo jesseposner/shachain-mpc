@@ -227,33 +227,35 @@ class Coordinator:
         """Compile the (public, input-independent) channel-open program and
         have the quorum garble and stockpile the package. Runs before the
         seed exists."""
-        plan, spec, out_vids = self.pl.init_plan()
+        plan, spec, out_vids, commit = self.pl.init_plan()
         precompiled = self.compile_step(plan, domain='binary')
-        self._cold = (plan, spec, out_vids, precompiled)
+        self._cold = (plan, spec, out_vids, commit, precompiled)
         self.run_step(plan, spec, mode='garble', precompiled=precompiled)
 
     def init_channel(self, protocol='field'):
         if protocol == 'package':
-            plan, spec, out_vids, precompiled = self._cold
+            plan, spec, out_vids, commit, precompiled = self._cold
             regs, _, _ = self.run_step(plan, spec, mode='eval',
                                        precompiled=precompiled)
         else:
-            plan, spec, out_vids = self.pl.init_plan()
+            plan, spec, out_vids, commit = self.pl.init_plan()
             regs, _, _ = self.run_step(plan, spec, protocol=protocol)
-        self.pl.store_masked(out_vids, regs)
+        commit(regs)
 
     def restore(self):
-        plan, spec, out_vids = self.pl.restore_plan()
+        plan, spec, out_vids, commit = self.pl.restore_plan()
         regs, _, _ = self.run_step(plan, spec)
-        self.pl.store_masked(out_vids, regs)
+        commit(regs)
         return len(plan['ops'])
 
     def prepare_leaf(self):
-        plan, spec, out_vids, c, index = self.pl.prepare_plan()
+        plan, spec, out_vids, c, index, commit = self.pl.prepare_plan()
         regs, valids, points = self.run_step(plan, spec)
+        # Everything that could reject this leaf runs before the transition
+        # is applied: an abort here leaves the channel exactly where it was.
         assert valids == [1], f'scalar validity check failed: {valids}'
-        self.pl.store_masked(out_vids, regs)
         P = self.combine_points(points)[0]
+        commit(regs)
         self.public.setdefault('points', {})[str(c)] = [f'{P[0]:x}', f'{P[1]:x}']
         return c, index, P
 
@@ -268,6 +270,14 @@ class Coordinator:
         harmless, and it is the same equation the counterparty verifies.
         """
         vid = self.public['leaves'][str(c)]
+        expected = self.public.get('points', {}).get(str(c))
+        if expected is None:
+            # Refuse before asking anyone for summands. Without a published
+            # point there is nothing to check the released secret against,
+            # and an unverifiable release is worse than no release: it is
+            # the counterparty's check that we would be skipping.
+            raise AssertionError(
+                f'no point published for state {c}; refusing to release')
         wanted = list(range(N_MEMBERS))
         seen = {}
         # Query every member at once. Sequential requests would make this
@@ -306,14 +316,12 @@ class Coordinator:
             acc ^= int(val, 16)
         secret = decode_bytes(acc)
 
-        expected = self.public.get('points', {}).get(str(c))
-        if expected is not None:
-            s = int.from_bytes(secret, 'big') % Q
-            got_pt = point_export.ec_mul(s)
-            if [f'{got_pt[0]:x}', f'{got_pt[1]:x}'] != expected:
-                raise AssertionError(
-                    f'released secret for state {c} does not match its '
-                    f'published point; a member supplied a bad summand')
+        s = int.from_bytes(secret, 'big') % Q
+        got_pt = point_export.ec_mul(s)
+        if [f'{got_pt[0]:x}', f'{got_pt[1]:x}'] != expected:
+            raise AssertionError(
+                f'released secret for state {c} does not match its '
+                f'published point; a member supplied a bad summand')
         self.public['next_release'] = c + 1
         if SHOW_ROUNDS:
             print(f'   [release state {c}: one round, {gather * 1000:.0f} ms '

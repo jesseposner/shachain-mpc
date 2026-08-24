@@ -87,6 +87,19 @@ whitelist, which closes both code-execution paths. `--bind` allows listening on 
 address rather than every interface, and the off-curve point issue is fixed.
 Caller authentication is still absent and is now stated in poc/README.md.
 
+That claim was overstated until an external audit caught it: `/step` resolved
+its writes through the check, `/setup` did not, so certificate names were
+still an arbitrary-file-write path out of the working directory. Both routes
+now share the guard.
+
+The audit also named the deeper version of this item. Authenticating the
+coordinator does not close it, because `/step` runs caller-supplied bytecode
+over real seed summands and the engine opens any value it is asked to open.
+An authenticated but malicious coordinator can therefore have honest members
+reconstruct the seed. Members must validate a canonical plan and an approved
+template themselves, or the coordinator belongs in the trusted computing
+base and the documentation should say so.
+
 `poc/member.py:239` binds to `0.0.0.0`; no route authenticates its caller. Three
 separate problems, in increasing severity:
 
@@ -292,6 +305,40 @@ about fifty lines when this was written.
 - **The batched throughput figure came from the broken vectorised path.**
   Re-measured with the fix: 100 verified-correct parallel hashes cost 17%
   more wall-clock than a single edge.
+
+## Fixed after an external audit
+
+An audit of the untrusted-coordinator model raised these. All were
+confirmed against the code and all are now closed. `poc/selftest.py` covers the
+four that a clean lifecycle run cannot exercise, and each of its checks was
+confirmed to fail against the code as it stood.
+
+- **`scripts/ldk_check.sh` had not run since `counterparty.rs` was added.**
+  `cargo run` became ambiguous between two binaries, and `set -eu` stopped
+  the script before both the LDK verification and the point-export harness:
+  the evidence the README leans on hardest, silently absent. The PoC path
+  survived because it builds and invokes the binaries directly. Fixed with
+  `--bin ldk-check`; the script passes all five of its assertions again.
+- **The lane test sorted both sides**, so it compared a set of digests and
+  would have passed under any permutation of lanes. Given that the bug it
+  exists for was wrong values in lanes 1 and up, that was the wrong shape of
+  check. Both sides now compare in order, verified by permuting the
+  expectation and watching it fail.
+- **Planner transitions were not atomic.** `prepare_plan` advanced the
+  commitment number and moved the frontier before the MPC ran and before the
+  scalar validity check; `restore_plan` erased the frontier and every masked
+  value on entry. An abort left the channel half-advanced. Each now builds
+  against a copy and returns a `commit` applied only after every check passes.
+- **A secret could be released with no published point.** The point check was
+  conditional on a point existing, so a state that never got one released
+  anyway and advanced `next_release`. It is the same equation the
+  counterparty verifies, so skipping it is the one case where a wrong secret
+  passes unnoticed. Release now refuses before contacting any member.
+- **Buffer masks were not channel-bound.** Seeds derive from `sid`, masks
+  derived from `vid` alone, and value ids restart at v0 for every channel.
+  A second channel built on the same Iceberg material would reuse the
+  first's masks, so revealing one channel's secret would unmask the other's. Masks now derive from
+  `sid || vid`, and both derivations refuse to run with no channel bound.
 
 ## Open, found in that run
 

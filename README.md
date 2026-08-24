@@ -97,7 +97,8 @@ scheme beside it. See [docs/key-material.md](docs/key-material.md).
 | check | what it establishes |
 |---|---|
 | `scripts/ref.py selftest` | the plaintext reference against the five official BOLT #3 vectors |
-| `scripts/test.sh` | MPC output against that reference under six protocols, including the invalid-scalar branch, all lanes of a vectorised hash, and Iceberg conformance (23 cases) |
+| `scripts/test.sh` | MPC output against that reference under six protocols, including the invalid-scalar branch, all lanes of a vectorised hash in order, and Iceberg conformance (28 cases) |
+| `poc/selftest.py` | what a clean run never exercises: an aborted transition changes nothing public, a release with no published point is refused before anyone is asked, and two channels never share a mask |
 | `scripts/ldk_check.sh` | secrets derived by the maliciously secure MPC fed to rust-lightning's `CounterpartyCommitmentSecrets`, which accepts the sequence, rejects every single-byte corruption, and re-derives stored secrets |
 | the same script | point export: each party turns its share into a curve point, replicated pairs are cross-checked by point equality, the combined P equals s*G, and a corrupted share aborts |
 | `poc/coordinator.py --local` | the full lifecycle, with an unmodified LDK counterparty judging every point and secret |

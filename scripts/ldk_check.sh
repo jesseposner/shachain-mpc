@@ -29,7 +29,7 @@ done
 echo "derived $LEAVES secrets with malicious-rep-bin"
 
 cd "$HERE/ldk-check"
-cargo run -q --release -- "$OUT"
+cargo run -q --release --bin ldk-check -- "$OUT"
 rm -f "$OUT"
 
 # Point export: derive one scalar with B2A + EXPORT, then publish P = s*G.

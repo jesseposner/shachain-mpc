@@ -60,11 +60,14 @@ with open(f'{sys.argv[1]}/Player-Data/Input-P0-0', 'w') as f:
     f.write('\n'.join(str(enc(s)) for s in seeds) + '\n')
 PYEOF
   ./compile.py -B 256 shachain_step 1 3 0 1 >/dev/null
-  got=$(Scripts/mal-rep-bin.sh shachain_step-1-3-0-1 2>&1         | sed -n 's/^Reg\[[0-9]*\] = 0x\([0-9a-f]*\).*/\1/p' | sort)
+  # Lane order matters: the seeds go in as lanes 0,1,2 and must come back in
+  # that order. Sorting either side would hide a lane permutation, which is
+  # the failure mode this test exists for.
+  got=$(Scripts/mal-rep-bin.sh shachain_step-1-3-0-1 2>&1         | sed -n 's/^Reg\[[0-9]*\] = 0x\([0-9a-f]*\).*/\1/p')
   want=$(python3 -c "
 import sys; sys.path.insert(0, '$HERE/scripts'); import ref
 for s in ('01'*32, '02'*32, '03'*32):
-    print(ref.walk(bytes.fromhex(s), [47]).hex())" | sort)
+    print(ref.walk(bytes.fromhex(s), [47]).hex())")
   if [ "$got" = "$want" ]; then
     echo "PASS vectorised hashing correct in all 3 lanes"
   else
@@ -72,6 +75,11 @@ for s in ('01'*32, '02'*32, '03'*32):
   fi
 }
 lane_check
+
+# Properties of the bookkeeping around the MPC: transitions that abort must
+# leave nothing half-applied, and a secret must never be released without a
+# point to check it against. A clean lifecycle exercises neither.
+python3 "$HERE/poc/selftest.py"
 
 # Key material comes from Iceberg rather than from a ceremony of our own,
 # so what has to hold is that our reimplementation of its dealing and tagged

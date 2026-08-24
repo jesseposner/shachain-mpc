@@ -123,7 +123,9 @@ def handle_setup(req):
     STATE.sid = req.get('sid', '')
     pd = os.path.join(STATE.workdir, 'Player-Data')
     for name, b64 in req.get('certs', {}).items():
-        with open(os.path.join(pd, name), 'wb') as f:
+        # Same guard as /step: a caller-supplied name is a path, and
+        # os.path.join would honour an absolute one or a '..' escape.
+        with open(safe_path(pd, name), 'wb') as f:
             f.write(base64.b64decode(b64))
     if subprocess.run(['openssl', 'rehash', pd], capture_output=True).returncode:
         subprocess.run(['c_rehash', pd], capture_output=True, check=True)
@@ -191,6 +193,7 @@ def seed_summand(j):
     """Summand j of the channel's shachain seed."""
     phi = STATE.phi.get(str(j))
     assert phi is not None, f'no phi {j} held'
+    assert STATE.sid, 'no channel id: derivation must be channel-bound'
     return encode_int(_gen(phi, TAG_SEED, STATE.sid))
 
 
@@ -201,10 +204,17 @@ def buffer_summand(j, vid):
     depth costs no secret storage and no per-leaf distribution. Every
     member except j can compute this, which is what lets a quorum change
     happen without rebuilding the buffer.
+
+    Bound to the channel as well as the value. Iceberg shares outlive any
+    one channel, and value ids restart at v0 for each, so deriving from the
+    id alone would give two channels the same mask for their v0. Revealing
+    one channel's secret would then unmask the other's, whose masked value
+    is public.
     """
     phi = STATE.phi.get(str(j))
     assert phi is not None, f'no phi {j} held'
-    return encode_int(_gen(phi, TAG_MASK, vid))
+    assert STATE.sid, 'no channel id: derivation must be channel-bound'
+    return encode_int(_gen(phi, TAG_MASK, f'{STATE.sid}/{vid}'))
 
 
 def handle_reveal(req):

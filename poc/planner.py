@@ -76,30 +76,40 @@ class Planner:
         return cur, prefix
 
     def init_plan(self):
-        """Cold start: frontier down to leaf M. Returns (plan, spec, out_vids)
-        where out_vids[i] names the value behind revealed register i."""
+        """Cold start: frontier down to leaf M.
+
+        Returns (plan, spec, out_vids, commit) where out_vids[i] names the
+        value behind revealed register i, and commit(regs) applies the
+        transition. Nothing public changes until commit runs."""
         spec = {'summands': self.summand_slots(), 'masked_vids': [],
                 'fresh_vids': []}
         ops, frames = [], []
         cur, prefix = self._seed_walk(M, ops, frames)
         frames.append([prefix, 0, self.new_vid(), cur])
-        outputs, out_vids = [], []
+        outputs, out_vids, new_frames = [], [], []
         for pfx, depth, vid, src in frames:
             outputs.append({'id': src, 'kind': 'mask',
                             'slots': self.summand_slots()})
             spec['fresh_vids'].append(self.hide(vid))
             out_vids.append(vid)
-            self.public['frames'].append([pfx, depth, vid])
+            new_frames.append([pfx, depth, vid])
         plan = {'summands': [{'id': 'seed',
                               'slots': [s for _, s in spec['summands']]}],
                 'ops': ops, 'outputs': outputs}
-        return plan, spec, out_vids
+
+        def commit(regs):
+            self.store_masked(out_vids, regs)
+            self.public['frames'].extend(new_frames)
+
+        return plan, spec, out_vids, commit
 
     def restore_plan(self):
         """Rebuild the frontier for the next commitment from the seed, plus
-        re-derive prepared-but-unreleased leaves (pending revocations)."""
-        self.public['frames'] = []
-        self.public['masked'] = {}
+        re-derive prepared-but-unreleased leaves (pending revocations).
+
+        The old frontier and masked values are discarded inside commit(), not
+        here: a restore that aborts must leave the previous state intact
+        rather than half-erased."""
         spec = {'summands': self.summand_slots(), 'masked_vids': [],
                 'fresh_vids': []}
         ops, frames = [], []
@@ -107,13 +117,13 @@ class Planner:
         cur, prefix = self._seed_walk(next_index, ops, frames)
         frames.append([prefix, 0, self.new_vid(), cur])
         assert prefix == next_index
-        outputs, out_vids = [], []
+        outputs, out_vids, new_frames, new_leaves = [], [], [], []
         for pfx, depth, vid, src in frames:
             outputs.append({'id': src, 'kind': 'mask',
                             'slots': self.summand_slots()})
             spec['fresh_vids'].append(self.hide(vid))
             out_vids.append(vid)
-            self.public['frames'].append([pfx, depth, vid])
+            new_frames.append([pfx, depth, vid])
         for c_r in range(self.public['next_release'],
                          self.public['next_commitment']):
             cur, _ = self._seed_walk(M - c_r, ops, [])
@@ -122,15 +132,27 @@ class Planner:
                             'slots': self.summand_slots()})
             spec['fresh_vids'].append(self.hide(re_vid))
             out_vids.append(re_vid)
-            self.public['leaves'][str(c_r)] = re_vid
+            new_leaves.append((str(c_r), re_vid))
         plan = {'summands': [{'id': 'seed',
                               'slots': [s for _, s in spec['summands']]}],
                 'ops': ops, 'outputs': outputs}
-        return plan, spec, out_vids
+
+        def commit(regs):
+            self.public['frames'] = new_frames
+            self.public['masked'] = {}
+            self.store_masked(out_vids, regs)
+            for key, re_vid in new_leaves:
+                self.public['leaves'][key] = re_vid
+
+        return plan, spec, out_vids, commit
 
     def prepare_plan(self):
         """Advance the frontier to the next leaf and export its scalar.
-        Returns (plan, spec, out_vids, commitment_number, index)."""
+
+        Returns (plan, spec, out_vids, commitment_number, index, commit).
+        The frontier walk runs against a copy, so an MPC abort or a failed
+        validity check leaves the commitment number and the frontier exactly
+        where they were and the step can simply be retried."""
         c = self.public['next_commitment']
         index = M - c
         spec = {'summands': [], 'masked_vids': [], 'fresh_vids': []}
@@ -144,7 +166,7 @@ class Planner:
                 spec['masked_vids'].append(self.hide(vid))
                 loaded.add(vid)
 
-        frames = self.public['frames']
+        frames = [list(f) for f in self.public['frames']]
         top = frames.pop()
         while top[1] > 0:
             pfx, depth, vid = top
@@ -167,9 +189,14 @@ class Planner:
             load(leaf_vid)
         outputs.append({'id': leaf_vid, 'kind': 'export'})
         plan = {'masked': plan_masked, 'ops': ops, 'outputs': outputs}
-        self.public['next_commitment'] = c + 1
-        self.public['leaves'][str(c)] = leaf_vid
-        return plan, spec, out_vids, c, index
+
+        def commit(regs):
+            self.store_masked(out_vids, regs)
+            self.public['frames'] = frames
+            self.public['next_commitment'] = c + 1
+            self.public['leaves'][str(c)] = leaf_vid
+
+        return plan, spec, out_vids, c, index, commit
 
     def release_plan(self, c):
         """Open the per-commitment secret for state c."""

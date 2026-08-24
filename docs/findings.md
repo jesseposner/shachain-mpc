@@ -46,7 +46,7 @@ is free local work.
    passes the five official BOLT #3 test vectors (`scripts/ref.py selftest`).
    The MPC output equals the reference byte-for-byte under six protocols,
    including the invalid-scalar branch and every lane of a vectorised hash
-   (`scripts/test.sh`, 23 cases). Secrets
+   (`scripts/test.sh`, 28 cases). Secrets
    derived by the maliciously secure MPC are accepted by LDK's shachain
    verifier, which also rejects all 32 single-byte corruptions and re-derives
    stored secrets (`scripts/ldk_check.sh`, rust-lightning 0.1).
@@ -135,10 +135,18 @@ is free local work.
   the plaintext reference for three lanes. It is not checked against MP-SPDZ
   upstream, which still has the bug, so a stock checkout produces wrong
   answers in every lane but the first and says nothing about it.
-- **Member agents do not authenticate their caller.** Both code-execution
-  paths in `/step` are closed, but any peer reaching the port can still
-  overwrite a member's seeds. They are safe only behind the private network
-  they run on.
+- **Members execute whatever computation the coordinator sends.** This is
+  the sharper form of the authorization gap, and authenticating the
+  coordinator does not close it. `/step` installs caller-supplied bytecode
+  and feeds it real seed summands, and the engine will open any value it is
+  asked to open, so a coordinator that is authenticated and malicious can
+  have honest members reconstruct the seed. MPC computes the requested
+  function securely; nothing here decides whether it was the right function.
+  Members have to validate a canonical plan and an approved template
+  themselves, or the coordinator is inside the trust boundary. Unauthenticated
+  callers are the same hole reached more cheaply: any peer that can reach the
+  port can also overwrite a member's seeds. They are safe only behind the
+  private network they run on.
 - **Prototype quality.** MP-SPDZ is a research framework, carrying three
   out-of-tree patches of ours including one for a correctness bug in its
   vectorised hashing; the point-export harness simulates three parties in one
