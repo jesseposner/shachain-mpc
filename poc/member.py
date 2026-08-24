@@ -39,6 +39,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'scripts'))
 import point_export  # noqa: E402
+import iceberg  # noqa: E402
 
 Q = point_export.Q
 R_INV = pow(2**256 % Q, -1, Q)
@@ -67,18 +68,13 @@ class State:
             dst = os.path.join(workdir, os.path.basename(lib))
             if not os.path.exists(dst):
                 os.symlink(lib, dst)
-        self.summands_file = os.path.join(workdir, 'summands.json')
-        self.maskkeys_file = os.path.join(workdir, 'maskkeys.json')
+        self.phi_file = os.path.join(workdir, 'phi.json')
         self.masks_file = os.path.join(workdir, 'masks.json')
         self.sid = ''
-        self.contrib = {}
-        self.inbox = {}
-        self.summands = self._load(self.summands_file)
-        # Long-term keys for buffer summands. Key j is held by every member
-        # except j, so any quorum can derive every summand and losing one
-        # member loses nothing. This is what makes a prepared buffer survive
-        # a quorum change instead of needing a rebuild from the seed.
-        self.maskkeys = self._load(self.maskkeys_file)
+        # phi_j, the replicated PRF seeds from Iceberg's key generation.
+        # phi_j is held by every member except j, so any quorum derives
+        # every summand and losing one member loses nothing.
+        self.phi = self._load(self.phi_file)
         self.masks = self._load(self.masks_file)
 
     @staticmethod
@@ -86,8 +82,7 @@ class State:
         return json.load(open(path)) if os.path.exists(path) else {}
 
     def save(self):
-        json.dump(self.summands, open(self.summands_file, 'w'))
-        json.dump(self.maskkeys, open(self.maskkeys_file, 'w'))
+        json.dump(self.phi, open(self.phi_file, 'w'))
         json.dump(self.masks, open(self.masks_file, 'w'))
 
 
@@ -118,177 +113,85 @@ def safe_path(base, rel):
 
 
 def handle_setup(req):
+    """Take delivery of this member's phi shares and the channel context.
+
+    In a deployment these arrive from Iceberg's key generation. Here the
+    harness supplies them, which is the one place a real system differs.
+    """
     STATE.index = req['index']
     STATE.roster = req['roster']
+    STATE.sid = req.get('sid', '')
     pd = os.path.join(STATE.workdir, 'Player-Data')
     for name, b64 in req.get('certs', {}).items():
         with open(os.path.join(pd, name), 'wb') as f:
             f.write(base64.b64decode(b64))
     if subprocess.run(['openssl', 'rehash', pd], capture_output=True).returncode:
         subprocess.run(['c_rehash', pd], capture_output=True, check=True)
-    # Deal the summands this member originates to every other holder
-    # (member-to-member; the coordinator never sees them).
-    for j in req.get('originate', []):
-        value = secrets.token_bytes(32).hex()
-        maskkey = secrets.token_bytes(32).hex()
-        STATE.summands[str(j)] = value
-        STATE.maskkeys[str(j)] = maskkey
-        for i, peer in enumerate(STATE.roster):
-            if i != STATE.index and i != j:
-                data = json.dumps({'j': j, 'value': value,
-                                   'maskkey': maskkey}).encode()
-                r = urllib.request.Request(
-                    peer['url'] + '/summand', data=data,
-                    headers={'Content-Type': 'application/json'})
-                urllib.request.urlopen(r, timeout=30).read()
+    # This member's Iceberg share: the seeds whose subsets do not name it.
+    STATE.phi.update(req.get('phi', {}))
     STATE.save()
     return {'ok': True}
 
 
-# ---- setup ceremony ---------------------------------------------------
+# ---- key material ------------------------------------------------------
 #
-# Summand j is held by every member except j. Two things have to be true of
-# it: nobody chooses it, and every holder ends up with the same bytes.
+# The seed and the buffer mask keys are not generated here. They are
+# derived from the seeds in an Iceberg share, which this engine takes as
+# given rather than producing.
 #
-# The original setup satisfied neither. One originator generated each
-# summand alone, so a weak generator at that one member handed the whole
-# seed to anyone who compromised a single other member, which is a failure
-# the corruption model does not even count. And an originator could send
-# different bytes to different holders, so different quorums would derive
-# different chains.
+# Iceberg shares a secret as sk = sum over authorised sets A of phi_A, with
+# "every share phi_A replicated across all members outside A" (the paper's
+# overview), and derives per-tag shares with gen(k, sk_k, w). That is the
+# same object this engine needs: a summand held by every member except one,
+# and a deterministic per-value derivation from it. An earlier version of
+# this file ran a bespoke commit-and-reveal ceremony to build the same
+# structure, which was a worse reimplementation of key generation that
+# Iceberg has to run anyway.
 #
-# So: every holder of summand j contributes to it, and the summand is the
-# XOR of those contributions, which is uniform if any one contributor's
-# generator is sound. Contributions are committed before they are revealed,
-# so nobody can see others' values and then pick their own to steer the
-# result. Finally every holder publishes a digest of the summand it
-# computed, and the coordinator refuses to continue unless all holders of a
-# summand agree, which is what catches an equivocating contributor.
+# Drawing phi from vpss1.keygen, which the paper specifies as coming from a
+# trusted dealer or a distributed key generation, buys three things. The
+# summands are consistent by construction, so no per-value agreement check
+# is needed. No entropy depends on a single member. And key generation does
+# not pass through this coordinator, which closes the gap a bespoke ceremony
+# could not: a corrupted coordinator relaying commitments could show
+# different tables to different members.
 #
-# One contribution covers both the seed summand and the buffer mask key.
+# An Iceberg share is "a collection of 32-byte seeds, one for every group of
+# t-1 participants that this participant is NOT a member of". For t=2 that
+# is one seed per other participant, which is the structure this engine
+# needs. scripts/iceberg.py reimplements the dealing and the tagged hashing
+# byte-for-byte from src/modules/iceberg in the benchmark repository, and
+# its selftest checks that against the midstates the C hard-codes.
+#
+# Derivation here uses tags of its own, so a shachain summand cannot collide
+# with a signing share drawn from the same seed.
+
+TAG_SEED = iceberg.SHACHAIN_SEED_TAG
+TAG_MASK = iceberg.SHACHAIN_MASK_TAG
 
 
-def _commit(contribution, nonce, sid, frm, j):
-    return hashlib.sha256(
-        contribution + nonce + sid.encode()
-        + f'|{frm}|{j}'.encode()).hexdigest()
+def _gen(phi_hex, tag, value_id):
+    """Derive from an Iceberg seed, with this engine's domain separation.
 
-
-def handle_ceremony_commit(req):
-    """Phase one: generate contributions and publish commitments to them."""
-    STATE.index = req['index']
-    STATE.roster = req['roster']
-    STATE.sid = req['sid']
-    pd = os.path.join(STATE.workdir, 'Player-Data')
-    for name, b64 in req.get('certs', {}).items():
-        with open(os.path.join(pd, name), 'wb') as f:
-            f.write(base64.b64decode(b64))
-    if subprocess.run(['openssl', 'rehash', pd],
-                      capture_output=True).returncode:
-        subprocess.run(['c_rehash', pd], capture_output=True, check=True)
-
-    STATE.contrib = {}
-    commitments = {}
-    for j in range(len(STATE.roster)):
-        if j == STATE.index:
-            continue                      # a member does not hold summand j=itself
-        contribution = secrets.token_bytes(64)   # 32 seed + 32 mask key
-        nonce = secrets.token_bytes(32)
-        STATE.contrib[j] = (contribution, nonce)
-        commitments[str(j)] = _commit(contribution, nonce, STATE.sid,
-                                      STATE.index, j)
-    STATE.save()
-    return {'ok': True, 'commitments': commitments}
-
-
-def handle_contribution(req):
-    """A co-holder's revealed contribution to a summand we also hold."""
-    STATE.inbox.setdefault(int(req['j']), {})[int(req['frm'])] = (
-        req['contribution'], req['nonce'])
-    return {'ok': True}
-
-
-# Fault injection, for testing that the ceremony's checks actually fire.
-# CEREMONY_FAULT=badreveal   reveal a contribution that does not match the
-#                            commitment already published
-# CEREMONY_FAULT=equivocate  send different bytes to different holders
-# CEREMONY_FAULT=badcombine  verify honestly, then store a different summand
-CEREMONY_FAULT = os.environ.get('CEREMONY_FAULT', '')
-
-
-def handle_ceremony_reveal(req):
-    """Phase two: reveal to co-holders, verify, combine, and report a digest
-    of each summand so the coordinator can detect equivocation."""
-    commitments = req['commitments']          # {from: {j: commitment}}
-    n = len(STATE.roster)
-
-    first = True
-    for j, (contribution, nonce) in STATE.contrib.items():
-        for i, peer in enumerate(STATE.roster):
-            if i == STATE.index or i == j:
-                continue                      # i does not hold summand j
-            sent = contribution
-            if CEREMONY_FAULT == 'badreveal':
-                sent = bytes([contribution[0] ^ 1]) + contribution[1:]
-            elif CEREMONY_FAULT == 'equivocate' and first:
-                sent = bytes([contribution[0] ^ 1]) + contribution[1:]
-                first = False
-            body = json.dumps({'j': j, 'frm': STATE.index,
-                               'contribution': sent.hex(),
-                               'nonce': nonce.hex()}).encode()
-            r = urllib.request.Request(
-                peer['url'] + '/contribution', data=body,
-                headers={'Content-Type': 'application/json'})
-            urllib.request.urlopen(r, timeout=30).read()
-    return {'ok': True, 'stage': 'revealed'}
-
-
-def handle_ceremony_combine(req):
-    commitments = req['commitments']
-    n = len(STATE.roster)
-    digests = {}
-    for j in range(n):
-        if j == STATE.index:
-            continue
-        parts = {STATE.index: STATE.contrib[j]}
-        for frm, (c_hex, nonce_hex) in STATE.inbox.get(j, {}).items():
-            parts[frm] = (bytes.fromhex(c_hex), bytes.fromhex(nonce_hex))
-        expected_holders = {i for i in range(n) if i != j}
-        if set(parts) != expected_holders:
-            return {'ok': False,
-                    'err': f'summand {j}: contributions from {sorted(parts)}, '
-                           f'expected {sorted(expected_holders)}'}
-        combined = bytes(64)
-        for frm in sorted(parts):
-            contribution, nonce = parts[frm]
-            want = commitments[str(frm)][str(j)]
-            if _commit(contribution, nonce, STATE.sid, frm, j) != want:
-                return {'ok': False,
-                        'err': f'member {frm} revealed a contribution to '
-                               f'summand {j} that does not match its '
-                               f'commitment'}
-            combined = bytes(a ^ b for a, b in zip(combined, contribution))
-        if CEREMONY_FAULT == 'badcombine' and j == min(
-                x for x in range(n) if x != STATE.index):
-            # every contribution verified, but this holder keeps something
-            # else: only the cross-check of holders' digests catches it
-            combined = bytes([combined[0] ^ 1]) + combined[1:]
-        STATE.summands[str(j)] = combined[:32].hex()
-        STATE.maskkeys[str(j)] = combined[32:].hex()
-        digests[str(j)] = hashlib.sha256(
-            combined + STATE.sid.encode() + b'|summand-digest').hexdigest()
-    STATE.contrib = {}
-    STATE.inbox = {}
-    STATE.save()
-    return {'ok': True, 'digests': digests}
+    Byte-compatible with the tagged hashing in Iceberg's C: see
+    scripts/iceberg.py, whose selftest recomputes the midstates the C
+    hard-codes and compares them.
+    """
+    return iceberg.shachain_summand(bytes.fromhex(phi_hex), tag, value_id)
 
 
 def handle_summand(req):
-    STATE.summands[str(req['j'])] = req['value']
-    if 'maskkey' in req:
-        STATE.maskkeys[str(req['j'])] = req['maskkey']
+    """A phi share for an authorised set this member belongs to."""
+    STATE.phi[str(req['j'])] = req['phi']
     STATE.save()
     return {'ok': True}
+
+
+def seed_summand(j):
+    """Summand j of the channel's shachain seed."""
+    phi = STATE.phi.get(str(j))
+    assert phi is not None, f'no phi {j} held'
+    return encode_int(_gen(phi, TAG_SEED, STATE.sid))
 
 
 def buffer_summand(j, vid):
@@ -299,10 +202,9 @@ def buffer_summand(j, vid):
     member except j can compute this, which is what lets a quorum change
     happen without rebuilding the buffer.
     """
-    key = STATE.maskkeys.get(str(j))
-    assert key is not None, f'no mask key {j} held'
-    digest = hashlib.sha256(bytes.fromhex(key) + vid.encode()).digest()
-    return encode_int(digest)
+    phi = STATE.phi.get(str(j))
+    assert phi is not None, f'no phi {j} held'
+    return encode_int(_gen(phi, TAG_MASK, vid))
 
 
 def handle_reveal(req):
@@ -322,7 +224,7 @@ def handle_reveal(req):
     vid = req['vid']
     have = {}
     for j in req.get('summands', []):
-        if str(j) in STATE.maskkeys:
+        if str(j) in STATE.phi:
             have[str(j)] = hex(buffer_summand(j, vid))
     if not have:
         return {'ok': False, 'err': f'no summands derivable for {vid}'}
@@ -344,9 +246,7 @@ def build_inputs(spec, slot):
     inputs = []
     for j, s in spec['summands']:
         if s == slot:
-            value = STATE.summands.get(str(j))
-            assert value is not None, f'missing summand {j}'
-            inputs.append(encode_int(bytes.fromhex(value)))
+            inputs.append(seed_summand(j))
     for vid, assignment in spec['masked_vids']:
         for j, s in assignment:
             if s == slot:
@@ -423,11 +323,7 @@ def handle_step(req):
 
 ROUTES = {'/setup': handle_setup, '/summand': handle_summand,
           '/step': handle_step, '/crash': handle_crash,
-          '/reveal': handle_reveal,
-          '/ceremony_commit': handle_ceremony_commit,
-          '/contribution': handle_contribution,
-          '/ceremony_reveal': handle_ceremony_reveal,
-          '/ceremony_combine': handle_ceremony_combine}
+          '/reveal': handle_reveal}
 
 
 class Handler(BaseHTTPRequestHandler):

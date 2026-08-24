@@ -125,16 +125,18 @@ replaces that session with plain messaging and so should come in at or below
 that figure, but the machines were gone before it existed. It deserves a live
 measurement before anyone quotes it.
 
-## Setup is a ceremony, not a hand-off
+## Key material comes from Iceberg
 
-Summand j of the seed used to come from one originator, so a weak generator
-at that member handed the whole seed to anyone compromising a single other
-member, and nothing stopped an originator sending different bytes to
-different holders. Now every holder contributes, contributions are committed
-before being revealed, and holders publish digests that must agree. Three
-faults are exercised in the suite: a mismatched reveal, an equivocating
-contributor, and a holder that keeps something else. See
-[docs/setup-ceremony.md](docs/setup-ceremony.md).
+The shachain does not generate a secret of its own. An Iceberg share is
+already a collection of seeds, one per group of t-1 participants the holder
+is not in, which at t=2 is one seed per other participant: a summand held by
+everyone except one member. `scripts/iceberg.py` reimplements Iceberg's
+dealing and tagged hashing byte-for-byte from `src/modules/iceberg`, checked
+against the midstates its C hard-codes, and derives shachain values under
+tags of their own so they cannot collide with signing shares.
+
+Setup's security is therefore Iceberg's key generation's, rather than a
+second scheme beside it. See [docs/key-material.md](docs/key-material.md).
 
 ## Recovery costs nothing
 

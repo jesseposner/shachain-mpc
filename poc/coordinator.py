@@ -21,6 +21,7 @@ import argparse
 import base64
 import glob
 import hashlib
+import secrets
 import json
 import os
 import shutil
@@ -36,6 +37,7 @@ sys.path.insert(0, os.path.join(REPO, 'scripts'))
 sys.path.insert(0, HERE)
 import ref  # noqa: E402
 import point_export  # noqa: E402
+import iceberg  # noqa: E402
 import planner  # noqa: E402
 
 Q = point_export.Q
@@ -43,6 +45,7 @@ P_FIELD = point_export.P_FIELD
 M = planner.M
 QUORUM = 3
 N_MEMBERS = planner.N_MEMBERS
+THRESHOLD = 2                      # Iceberg t; quorum is 2t-1 = 3
 # One MPC step can be a 48-edge garbling, which over a WAN is tens of
 # minutes: ~1,600 communication rounds per shachain edge at wide-area
 # latency. Keep this well above the slowest step you expect.
@@ -94,19 +97,24 @@ class Coordinator:
         return [self.urls[i] for i in self.public['quorum']]
 
     def setup(self):
-        """Run the setup ceremony.
+        """Deal the group and hand each member its Iceberg share.
 
-        Every holder of a summand contributes to it, so the summand is
-        uniform if any one contributor's generator is sound, rather than
-        depending on a single originator's. Contributions are committed
-        before being revealed, so nobody can see the others and then choose
-        their own to steer the result. Every holder then publishes a digest
-        of the summand it computed, and we refuse to continue unless all
-        holders of a summand agree, which is what catches a contributor that
-        sent different bytes to different holders.
+        The shachain does not generate key material of its own. It uses the
+        replicated seeds Iceberg's key generation already produces, so the
+        two share one setup rather than the shachain running a second,
+        weaker one beside it.
 
-        Note what the coordinator does and does not see: commitments and
-        digests, never a contribution or a summand.
+        Iceberg specifies that key generation comes from a trusted dealer or
+        a distributed key generation. This models the dealer, matching
+        secp256k1_iceberg_shares_gen: seeds are H_"Iceberg/dealer"(root, n,
+        t, rank), and participant k receives the seeds whose subsets do not
+        name it. A deployment substitutes Iceberg's key generation, and
+        nothing downstream changes, because what is delivered is the same
+        object.
+
+        The setup's security is therefore exactly Iceberg's key generation's,
+        which is the point: no better, no worse, and not a second thing to
+        analyse.
         """
         certs = {}
         for i in range(QUORUM):
@@ -120,32 +128,16 @@ class Coordinator:
         sid = self.public.setdefault(
             'sid', hashlib.sha256(''.join(self.urls).encode()).hexdigest())
 
-        commitments = {}
+        root = secrets.token_bytes(32)
+        shares = iceberg.deal(root, N_MEMBERS, THRESHOLD)
+        del root                      # a dealer that keeps the root is a dealer
         for i, url in enumerate(self.urls):
-            r = post(url, '/ceremony_commit',
-                     {'index': i, 'roster': roster, 'sid': sid,
-                      'certs': certs})
-            commitments[str(i)] = r['commitments']
-
-        for url in self.urls:
-            post(url, '/ceremony_reveal', {'commitments': commitments})
-
-        digests = {}
-        for i, url in enumerate(self.urls):
-            r = post(url, '/ceremony_combine', {'commitments': commitments})
-            for j, d in r['digests'].items():
-                digests.setdefault(j, {})[i] = d
-
-        for j, by_member in digests.items():
-            holders = {i for i in range(N_MEMBERS) if i != int(j)}
-            if set(by_member) != holders:
-                raise AssertionError(
-                    f'summand {j}: digests from {sorted(by_member)}, '
-                    f'expected holders {sorted(holders)}')
-            if len(set(by_member.values())) != 1:
-                raise AssertionError(
-                    f'summand {j}: its holders computed different values')
-        print(f'   ceremony: {len(digests)} summands, every holder agreeing')
+            held = {str(rank): seed.hex()
+                    for rank, seed in shares[i + 1].items()}
+            post(url, '/setup', {'index': i, 'roster': roster, 'sid': sid,
+                                 'certs': certs, 'phi': held})
+        print(f'   dealt {N_MEMBERS} Iceberg shares of '
+              f'{len(shares[1])} seeds each')
 
     def compile_step(self, plan, domain='field'):
         self.nonce += 1
@@ -351,17 +343,22 @@ def wait_healthy(urls):
             raise RuntimeError(f'member at {url} not responding')
 
 
-def local_oracle_seed(workdirs):
-    """--local test oracle: reconstruct the seed from the member state files
-    on disk. Only possible because the local demo hosts every member."""
-    acc = 0
-    for j in range(N_MEMBERS):
-        for wd in workdirs:
-            s = json.load(open(os.path.join(wd, 'summands.json')))
-            if str(j) in s:
-                acc ^= int.from_bytes(bytes.fromhex(s[str(j)]), 'big')
-                break
-    return acc.to_bytes(32, 'big')
+def local_oracle_seed(workdirs, sid):
+    """--local test oracle: reconstruct the shachain seed in the clear.
+
+    Only possible because the local demo hosts every member, and only used
+    to check MPC output against the plaintext reference. A deployment has no
+    such function: the seed exists nowhere outside the MPC.
+    """
+    seeds = {}
+    for wd in workdirs:
+        seeds.update(json.load(open(os.path.join(wd, 'phi.json'))))
+    acc = bytes(32)
+    for rank in sorted(seeds, key=int):
+        summand = iceberg.shachain_summand(
+            bytes.fromhex(seeds[rank]), iceberg.SHACHAIN_SEED_TAG, sid)
+        acc = bytes(a ^ b for a, b in zip(acc, summand))
+    return acc
 
 
 def main():
@@ -422,7 +419,8 @@ def main():
     try:
         print('== setup: dealing RSS summands member-to-member')
         coord.setup()
-        oracle = local_oracle_seed(workdirs) if args.local else None
+        oracle = (local_oracle_seed(workdirs, coord.public['sid'])
+                  if args.local else None)
         if args.cold_start == 'package':
             t = time.time()
             coord.pregarble_cold_start()
