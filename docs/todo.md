@@ -282,10 +282,13 @@ mitigation for the denial path.
   `not enough inputs in Player-Data/Input-P1-0`; the WAN run showed only
   party 0's `stream truncated`, which is why it read as a network fault. The
   phase now writes all three.
-- **Our MP-SPDZ vectorised-hashing patch is checked against the plaintext
-  reference, not against upstream.** MP-SPDZ still has the bug; anyone
-  reproducing this on a stock checkout gets wrong answers in every lane but
-  the first, silently.
+- **MP-SPDZ still has the vectorised-hashing bug**, confirmed against a stock
+  checkout at `892ac0e` with no patches beyond two needed to build. A
+  convention-independent reproducer, the cause, and a fix are written up in
+  `upstream/mp-spdz-sha256-vectorised.md`, with the reproducer itself in
+  `upstream/repro.mpc`. `sha3_256` is unaffected: it sizes its constants from
+  its input, which is the pattern `sha256` is missing. Not yet reported
+  upstream.
 
 ## Added since this sweep
 

@@ -1,0 +1,8 @@
+# Minimal reproducer: SHA-256 over a vectorised sbitvec.
+# Two lanes, two different 32-byte inputs, both known test values.
+from Compiler.GC.types import sbitvec
+from circuit import sha256
+t = sbitvec.get_type(256)
+x = t.get_input_from(0, size=2)
+for e in sha256(x).elements():
+    e.reveal().print_reg()
