@@ -5,7 +5,7 @@ The plan in this file has been built out as scripts. See
 `wan/prepare-aws.sh`, `wan/launch-instances.sh`, `wan/run-wan.sh`,
 `wan/teardown.sh` for the staging, launch, run and cleanup.
 
-Two things changed while building it, both worth recording:
+Building it forced two changes to that plan, both worth recording.
 
 - Topology is four nodes joined by a WireGuard mesh rather than raw public
   addressing. MP-SPDZ has every party dial the coordination server as a
