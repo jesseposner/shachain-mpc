@@ -24,7 +24,9 @@ row() { # label proto prog [args]
 {
   echo "# shachain_step benchmark"
   echo
-  echo "Host: $(hostname -s), $(sysctl -n machdep.cpu.brand_string 2>/dev/null || uname -m), $(date +%Y-%m-%d). 3 parties on loopback. MP-SPDZ $(git rev-parse --short HEAD)."
+  echo "Host: $(hostname -s), $(sysctl -n machdep.cpu.brand_string 2>/dev/null || uname -m), $(date +%Y-%m-%d). 3 parties on loopback."
+  echo
+  echo "MP-SPDZ $(git rev-parse --short HEAD), shachain-mpc $(git -C "$REPO" rev-parse --short HEAD). Recording both matters: figures from before the vectorised-hashing fix or the batching change do not describe the current system."
   echo
   echo "Times in seconds (wall, including preprocessing). T_sha = K edges of SHA-256, T_chk = scalar validity check, T_b2a = Boolean-to-Z_q conversion. Traffic is party 0 only."
   echo

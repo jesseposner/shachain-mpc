@@ -52,18 +52,24 @@ is free local work.
 
 2. **Cost in Iceberg's own trust model.** For t=2 (quorum of 3, one
    corruption), maliciously secure replicated MPC computes one shachain edge
-   in ~55 ms and 0.4 MB per party on loopback; batched across 1,000 channels
-   it amortizes to ~1.25 ms and ~125 KB per edge including the scalar-validity
-   check and the Boolean-to-Z_q conversion, or ~0.5 ms and ~41 KB without them
-   (`results/<host>-<date>.md`). For t=3 (quorum of 5, two corruptions),
+   in ~58 ms and 0.48 MB per party on loopback, and 1,000 edges batched cost
+   the same 1,628 rounds as one, so ~0.35 ms and ~44 KB per edge
+   (`results/<host>-<date>.md`, regenerated after the vectorised-hashing fix,
+   so every lane is verified). For t=3 (quorum of 5, two corruptions),
    malicious Shamir gives the same round structure at ~10x the bandwidth
-   (`results/shamir-t3.md`).
+   (`results/shamir-t3.md`). Loopback figures like these say what the compute
+   and bandwidth cost; they say nothing about the wide-area cost, which is
+   round count times latency (`results/wan-20260823.md`).
 
-3. **Rounds, not compute, are the constraint.** One edge is ~1,600 sequential
-   communication rounds, the AND-depth of the SHA-256 circuit. Over a network
-   this is seconds to minutes per edge, so derivation must run as background
-   precomputation with a lookahead buffer. The per-update hot path is then
-   only the B2A conversion and a scalar opening (~5 ms, 31 rounds).
+3. **Rounds, not compute, are the constraint.** One edge is ~1,630 sequential
+   communication rounds, the AND-depth of the SHA-256 circuit, which measured
+   65 s across three continents against 58 ms on one machine. So derivation
+   has to run as background precomputation into a lookahead buffer. What is
+   left on the payment path is revealing an already-prepared secret, and that
+   is one round: the members send the masks they hold and the adapter checks
+   the result against the point already published, with no MPC session at
+   all. The wide-area figure measured for that operation, 0.18 s, is for its
+   earlier six-round form; the one-round form postdates the machines.
 
 4. **Channel open resolved by garbled circuits.** The 48-edge cold start
    cannot be computed before the seed exists, but its garbled circuit can:
