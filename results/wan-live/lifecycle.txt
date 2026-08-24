@@ -1,0 +1,13 @@
+== setup: dealing RSS summands member-to-member
+== channel open: 48-edge cold start via replicated MPC
+   cold start 3267.9s
+== steady state: 2 updates
+   state 0: point published (17.1s)
+   state 1: point published, state 0 revoked (20.9s)
+== crash: all volatile masks destroyed; member 2 offline
+== quorum change to [0, 1, 3] + RESTORE from summands
+   restored with 94 hashes in 7598.8s
+== continuing: 2 updates with the new quorum
+   state 2: point published, state 1 revoked (25.0s)
+   state 3: point published, state 2 revoked (25.0s)
+== distributed PoC complete in 10957.1s: LDK accepted every point and secret
