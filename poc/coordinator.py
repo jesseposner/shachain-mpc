@@ -270,8 +270,27 @@ class Coordinator:
         vid = self.public['leaves'][str(c)]
         wanted = list(range(N_MEMBERS))
         seen = {}
-        for url in self.active_urls():
-            got = post(url, '/reveal', {'vid': vid, 'summands': wanted})
+        # Query every member at once. Sequential requests would make this
+        # three round trips rather than one, which is the whole claim.
+        t0 = time.time()
+        replies, errors = {}, []
+
+        def ask(url):
+            try:
+                replies[url] = post(url, '/reveal',
+                                    {'vid': vid, 'summands': wanted})
+            except Exception as e:
+                errors.append(f'{url}: {e}')
+
+        threads = [threading.Thread(target=ask, args=(u,))
+                   for u in self.active_urls()]
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join()
+        if errors:
+            raise RuntimeError('; '.join(errors))
+        for got in replies.values():
             for j, val in got['summands'].items():
                 if j in seen and seen[j] != val:
                     raise AssertionError(
@@ -281,6 +300,7 @@ class Coordinator:
         if missing:
             raise AssertionError(f'summands {missing} unavailable for state {c}')
 
+        gather = time.time() - t0
         acc = int(self.public['masked'][vid], 16)
         for val in seen.values():
             acc ^= int(val, 16)
@@ -295,6 +315,9 @@ class Coordinator:
                     f'released secret for state {c} does not match its '
                     f'published point; a member supplied a bad summand')
         self.public['next_release'] = c + 1
+        if SHOW_ROUNDS:
+            print(f'   [release state {c}: one round, {gather * 1000:.0f} ms '
+                  f'to gather summands from {len(self.active_urls())} members]')
         return secret
 
     def crash_all(self):

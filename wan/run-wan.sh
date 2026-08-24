@@ -9,7 +9,9 @@
 #   certs   one set of TLS certificates, generated once and distributed
 #   ping    latency matrix over the mesh, the path the MPC takes
 #   bench   raw per-primitive benchmarks
-#   life    the full distributed lifecycle against the live LDK counterparty
+#   life    the full distributed lifecycle against the live LDK counterparty,
+#           which now measures the one-round release and the quorum change
+#           that needs no rebuild
 #
 # Usage:
 #   sh wan/run-wan.sh              run every phase
@@ -223,7 +225,7 @@ fi
 if want life; then
   echo "=== life: distributed lifecycle (coordinator on member 0) ==="
   $SSHN "$U@$PUB0" \
-    "export PATH=\$HOME/.cargo/bin:\$PATH; \
+    "export PATH=\$HOME/.cargo/bin:\$PATH; export SHOW_ROUNDS=1; \
      cd \$HOME/shachain-mpc && python3 poc/coordinator.py \
        --members http://$W0:9001,http://$W1:9001,http://$W2:9001,http://$W3:9001 \
        --mpc-hosts $W0,$W1,$W2,$W3 \
