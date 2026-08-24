@@ -3,109 +3,43 @@
 Exactly BOLT-compatible per-commitment secrets for a thresholdized Lightning
 endpoint, evaluated inside honest-majority MPC.
 
-This is the experiment behind the question: if a t-of-n group emulates one
-Lightning endpoint ([Iceberg](https://eprint.iacr.org/2026/1757) handles the
-signing), can it also emulate the endpoint's BOLT #3 shachain, so that no
-coalition below threshold learns an unrevealed per-commitment secret, while the
-counterparty sees an ordinary channel? The shachain is SHA-256 based, so it has
-none of the algebraic structure that makes threshold signing cheap; the secret
-has to be derived inside a Boolean-circuit MPC.
+This repository answers one question. If a t-of-n group emulates one
+Lightning endpoint
+([Iceberg](https://eprint.iacr.org/2026/1757) handles the signing), can it
+also emulate the endpoint's BOLT #3 shachain, so that no coalition below
+threshold learns an unrevealed per-commitment secret while the counterparty
+sees an ordinary channel? The shachain is SHA-256 based, so it has none of
+the algebraic structure that makes threshold signing cheap, and the secrets
+have to be derived inside a Boolean-circuit MPC.
 
-## What is measured
+They can be, and a payment ends up costing one communication round.
 
-One shachain edge, `x <- SHA256(flip_b(x))`, on a secret-shared 32-byte value,
-exactly as BOLT #3 `generate_from_seed` computes it, followed by
+## Only the outbound chain needs MPC
 
-1. an exact validity check `1 <= s < q` (q = secp256k1 order) in the Boolean
-   domain, and
-2. conversion of the 256-bit string into an arithmetic sharing over Z_q, the
-   form needed to publish `P = s*G` without revealing `s`.
-
-Shachain derivation is a binary tree with one SHA-256 per edge (see
-[Threshold BOLT Shachain notes](#background)), so the per-edge cost is the
-per-commitment cost once a traversal frontier is kept.
-
-Protocols (all 3-party replicated secret sharing, one corruption, which is
-exactly Iceberg's t=2 signing quorum of 2t-1 members):
-
-| MP-SPDZ binary | security | rounds |
-|---|---|---|
-| `replicated-bin` / `replicated-field` | semi-honest | circuit depth |
-| `malicious-rep-bin` / `malicious-rep-field` | malicious | circuit depth |
-| `rep-bmr` / `mal-rep-bmr` | semi-honest / malicious | three online rounds (garbling precomputable) |
-
-Correctness is checked four ways:
-
-- `scripts/ref.py selftest`: the reference implementation against the five
-  official BOLT #3 test vectors;
-- `scripts/test.sh`: MPC output against the reference under every protocol,
-  including the invalid-scalar branch (19 cases);
-- `scripts/ldk_check.sh`: secrets derived by the maliciously secure MPC fed to
-  LDK's shachain verifier (rust-lightning `CounterpartyCommitmentSecrets`),
-  which accepts the sequence, rejects every single-byte corruption, and
-  re-derives stored secrets;
-- the same script runs the point-export harness
-  (`scripts/point_export.py`): each party turns its replicated Z_q share into
-  a curve point, replicated pairs are cross-checked by point equality, and
-  the combined P equals s*G, with a corrupted-share run aborting as it must.
-
-## Results (Apple M4 Max, 3 parties on loopback)
-
-Full table: [`results/`](results/). Headline, maliciously secure Rep3:
-
-| | per edge | party-0 traffic | rounds |
-|---|---:|---:|---:|
-| SHA-256 edge | ~55 ms | 0.40 MB | ~1,600 |
-| validity check | ~8 ms | ~0 | ~256 |
-| B2A to Z_q (daBits) | ~5 ms | 0.35 MB | ~31 |
-| batched over 1,000 channels, edge + check + B2A | 1.25 ms amortized | 125 KB amortized | |
-
-Reading:
-
-- Compute and bandwidth are cheap: maliciously secure, ~1 ms of work and
-  ~0.4 MB per commitment when batched across channels.
-- Round complexity dominates: ~1,600 sequential rounds per edge (AND-depth of
-  SHA-256 with ripple-carry adders) means ~1,600 x RTT over a network,
-  seconds per edge in one region, minutes for the 48-edge cold start across
-  regions. Loopback hides this.
-- So derivation has to run as background precomputation with a lookahead
-  buffer. What remains on the hot path is the B2A conversion and a scalar
-  opening.
-- Channel open looked like the hard case, since the 48-edge cold start has to
-  finish before funding. The BMR measurements
-  ([results/bmr-notes.md](results/bmr-notes.md)) resolve it: with pre-garbled
-  circuits the whole cold start runs in three online rounds plus ~0.5 s of
-  local evaluation, for a garbling package of ~1.6 GB per party prepared
-  before the channel exists. Steady state stays on Rep3; BMR covers channel
-  open and quorum changes.
-
-## End-to-end proof of concept
-
-`poc/` runs the whole design as a distributed lifecycle: per-member agents
-holding the only copies of private state (RSS summands dealt member-to-member,
-volatile frontier masks), and a coordinator that touches public data only.
-The channel does a 48-edge cold start, per-update frontier advances, point
-publication with replicated cross-checks, and revocation into a live LDK
-counterparty; then a crash, a quorum change to the standby member, and
-RESTORE from the seed summands, after which the channel continues
-byte-identically (pending pre-crash revocations included). The same agents
-deploy across machines for the WAN run. See [poc/README.md](poc/README.md).
+A channel runs two shachains. The one we generate has to be derived inside
+MPC, since no custodian may learn a future per-commitment secret; that chain
+is what everything here measures. The counterparty's chain arrives in
+plaintext in `revoke_and_ack`, which our endpoint is meant to learn, so it
+costs no MPC: store it in the usual 49 buckets and run BOLT's derivation
+check locally. Holding every secret received is safe for a single custodian,
+because punishing a cheat also needs our `revocation_basepoint_secret`,
+which is threshold-shared. A payment costs one MPC operation, not two.
 
 ## Rounds per operation
 
 Wide-area cost is round count times latency, so rounds are the number to
-watch. Measured on loopback, malicious 3-party replicated:
+watch.
 
 | operation | rounds | wide-area cost | how we know |
 |---|---:|---:|---|
 | **reveal a prepared secret (a payment)** | **1** | ~0.14 s | derived: one round trip on the slowest leg |
 | the same reveal, earlier six-round MPC form | 6 | 0.18 s | measured on the WAN |
-| prepare a leaf (validity check, scalar conversion) | 58 | ~2.3 s | derived from 40 ms per round |
+| **quorum change** | **0** | **none** | measured: the channel continues, nothing is rebuilt |
+| channel open from a stockpiled package | 3 online | **4.8 s** | measured on the WAN |
+| channel open, computed instead | 77,151 | 54.5 min | measured on the WAN |
+| prepare a leaf: validity check and conversion | 58 | ~2.3 s | derived; background work |
 | one shachain edge | ~1,635 | 65 s | measured on the WAN |
-| 48-edge channel open, computed | 77,151 | 54.5 min | measured on the WAN |
-| 48-edge channel open, stockpiled package | 3 online | **4.8 s** | measured on the WAN |
-| quorum change, replicated buffer | **0** | **none** | measured: the channel continues without a rebuild |
-| buffer refill, 1,024 secrets | ~16,800 | ~11 min | derived; 97% of it is hashing, and it buys 1,024 payments |
+| refill a 1,024-leaf buffer | ~16,800 | ~11 min | derived; 97% hashing, buys 1,024 payments |
 | rebuild from the seed (cold start only) | 77,151 | ~51 min | derived; 126 min measured before batching halved it |
 
 Round counts are loopback measurements, which is fine because a round count
@@ -113,17 +47,37 @@ is a property of the circuit rather than the network. Wide-area figures are
 either measured on four cross-region nodes or derived by multiplying rounds
 by the 40 ms per round those nodes exhibited, and the table says which.
 
-A payment costs one round because revealing a prepared secret is not a
-computation: the members send the masks they hold and the adapter checks the
-result against the point already published. Everything else is background
-work feeding a lookahead buffer. See [docs/batching.md](docs/batching.md).
+Two of these deserve their caveats stated rather than buried. The one-round
+payment is a round count: what was measured over the WAN is the earlier
+six-round MPC form, and the machines were gone before the one-round form
+existed. The quorum-change and buffer figures postdate the WAN run entirely.
+A fresh cross-region run would settle both.
 
-The one-round figure is a round count, not a wide-area measurement. What was
-measured over the WAN, at 0.18 s, is the earlier form of the same operation:
-a six-round MPC opening (`programs/release_only.mpc`). The one-round form
-replaces that session with plain messaging and so should come in at or below
-that figure, but the machines were gone before it existed. It deserves a live
-measurement before anyone quotes it.
+## Why a payment is one round
+
+A prepared secret is a public masked value plus a replicated sharing of
+summands, so revealing it is not a computation. The members send the
+summands they hold, the adapter compares the copies it receives and XORs
+them, and the result is checked against the point published for that state.
+There is no circuit to evaluate and no MPC session to run. A member
+supplying a wrong summand is caught twice: by the duplicate copies, and by the point check,
+which is the same equation the counterparty verifies.
+
+Everything expensive is background work feeding a lookahead buffer, and the
+buffer only has to stay ahead of consumption. Refilling 2^k leaves costs k
+tree levels rather than 2^k hashes, so a 1,024-deep buffer costs eleven
+minutes and sustains a payment every 0.64 s per channel. See
+[docs/batching.md](docs/batching.md).
+
+## Recovery costs nothing
+
+A prepared secret was originally hidden by one mask per online member, a
+3-of-3 sharing, so a single member dropping out destroyed the buffer and
+forced a 77,151-round rebuild from the seed: about 51 minutes across three
+continents with the channel frozen throughout. Prepared values are now
+hidden under a replicated sharing, derived rather than stored, so any quorum
+can reconstruct them and a member can drop out with no effect at all. See
+[docs/buffer-storage.md](docs/buffer-storage.md).
 
 ## Key material comes from Iceberg
 
@@ -132,50 +86,80 @@ already a collection of seeds, one per group of t-1 participants the holder
 is not in, which at t=2 is one seed per other participant: a summand held by
 everyone except one member. `scripts/iceberg.py` reimplements Iceberg's
 dealing and tagged hashing byte-for-byte from `src/modules/iceberg`, checked
-against the midstates its C hard-codes, and derives shachain values under
-tags of their own so they cannot collide with signing shares.
+by recomputing the SHA-256 midstates its C hard-codes, and derives shachain
+values under tags of their own so they cannot collide with signing shares.
 
-Setup's security is Iceberg's key generation's, rather than that of a
-second scheme beside it. See [docs/key-material.md](docs/key-material.md).
+Setup's security is Iceberg's key generation's, rather than that of a second
+scheme beside it. See [docs/key-material.md](docs/key-material.md).
 
-## Recovery costs nothing
+## Correctness
 
-A prepared secret was originally hidden by one mask per online member, a
-3-of-3 sharing, so a single member dropping out destroyed the buffer and
-forced a
-77,151-round rebuild from the seed: about 51 minutes across three continents,
-with the channel frozen throughout. Prepared values are now hidden under a
-replicated sharing whose summands are derived from long-term keys, so any
-quorum can reconstruct them, a member can drop out with no effect, and the
-buffer costs no secret storage at all. See
-[docs/buffer-storage.md](docs/buffer-storage.md).
+| check | what it establishes |
+|---|---|
+| `scripts/ref.py selftest` | the plaintext reference against the five official BOLT #3 vectors |
+| `scripts/test.sh` | MPC output against that reference under six protocols, including the invalid-scalar branch, all lanes of a vectorised hash, and Iceberg conformance (23 cases) |
+| `scripts/ldk_check.sh` | secrets derived by the maliciously secure MPC fed to rust-lightning's `CounterpartyCommitmentSecrets`, which accepts the sequence, rejects every single-byte corruption, and re-derives stored secrets |
+| the same script | point export: each party turns its share into a curve point, replicated pairs are cross-checked by point equality, the combined P equals s*G, and a corrupted share aborts |
+| `poc/coordinator.py --local` | the full lifecycle, with an unmodified LDK counterparty judging every point and secret |
+
+The LDK check is the one that matters most: software we did not write,
+running the derivation checks it would run against any peer, on secrets that
+were never assembled anywhere except inside the MPC.
+
+## End-to-end proof of concept
+
+`poc/` runs the design as a distributed lifecycle: per-member agents holding
+the only copies of private state, and a coordinator that touches public data
+only. A channel opens from a stockpiled garbled package, advances through
+updates, publishes points with replicated cross-checks, and revokes into a
+live LDK counterparty; then a member drops out, the standby takes over, and
+the channel continues with nothing rebuilt. The same agents deploy across
+machines for a wide-area run. See [poc/README.md](poc/README.md).
+
+## Results
+
+- [results/](results/): loopback benchmarks, Shamir at t=3, BMR and package
+  persistence, and the cross-region run
+- [results/wan-20260823.md](results/wan-20260823.md): four nodes on three
+  continents. Sections that predate later changes say so
+- [docs/findings.md](docs/findings.md): what is established and what is
+  assumed, written for someone deciding whether this is worth pursuing
+- [docs/todo.md](docs/todo.md): everything flagged as not-yet-done
+- [experiments/](experiments/): measured negative results, kept so the next
+  person finds the number instead of repeating the work
 
 ## Layout
 
 ```
-programs/shachain_step.mpc   the MPC program (K sequential edges, N parallel chains)
-scripts/setup.sh             clone, patch and build MP-SPDZ (macOS tested)
-scripts/test.sh              correctness against the plaintext reference, all protocols
-scripts/bench.sh             benchmark table -> results/<host>-<date>.md
-poc/                         distributed lifecycle PoC (see poc/README.md)
-scripts/ldk_check.sh         MPC secrets -> LDK verifier; point-export harness
-scripts/point_export.py      replicated shares -> published P = s*G with cross-checks
-scripts/ref.py               plaintext BOLT #3 reference (selftest = official vectors)
-scripts/input.py             writes party 0's input file in the program's bit convention
-ldk-check/                   Rust harness around rust-lightning's shachain store
-patches/                     MP-SPDZ fixes for Xcode clang 21 and BMR phase timing
-results/                     measurements
+programs/shachain_step.mpc     benchmark program: K edges, N chains, checks, export
+programs/shachain_engine.mpc   the engine the PoC drives, one plan per step
+programs/release_only.mpc      the payment hot path in isolation
+poc/                           distributed lifecycle: member agents and coordinator
+scripts/iceberg.py             Iceberg's dealing and tagged hashing, byte-compatible
+scripts/ref.py                 plaintext BOLT #3 reference (selftest = official vectors)
+scripts/point_export.py        replicated shares -> published P = s*G with cross-checks
+scripts/setup.sh               clone, patch and build MP-SPDZ (macOS and Linux ARM)
+scripts/test.sh                the correctness suite
+scripts/bench.sh               benchmark table -> results/<host>-<date>.md
+scripts/ldk_check.sh           MPC secrets -> LDK verifier; point-export harness
+ldk-check/                     Rust harness and the live counterparty process
+wan/                           cross-region run: staging, launch, mesh, teardown
+patches/                       MP-SPDZ fixes: clang 21, BMR phase timing, package persistence
+experiments/                   optimisations that did not work, with their numbers
 ```
 
 ## Usage
 
 ```sh
-./scripts/setup.sh        # MPSPDZ=... to choose the checkout location
-./scripts/test.sh
-./scripts/bench.sh
+./scripts/setup.sh                     # MPSPDZ=... to choose the checkout
+./scripts/test.sh                      # the correctness suite
+./scripts/bench.sh                     # loopback benchmarks
+python3 poc/coordinator.py --local     # the full lifecycle on one machine
+SHOW_ROUNDS=1 python3 poc/coordinator.py --local    # with per-step round counts
 ```
 
-Manual runs, from the MP-SPDZ directory:
+For a cross-region run see [wan/README.md](wan/README.md). Manual MPC runs,
+from the MP-SPDZ directory:
 
 ```sh
 ./compile.py -B 256 shachain_step 10 1 0 0            # 10 edges, binary only
@@ -185,41 +169,34 @@ Q=115792089237316195423570985008687907852837564279074904382605163141518161494337
 Scripts/mal-rep-field.sh shachain_step-1-1000-1-0 -P $Q
 ```
 
-Program arguments: `K` sequential edges, `N` parallel chains, `B2A` (0/1),
-`CHECK` (0/1, reveals outputs for testing).
-
-## Only the outbound chain needs MPC
-
-A channel has two shachains. The one we generate must be derived inside MPC,
-since no custodian may learn a future per-commitment secret; that chain is
-what everything here measures. The counterparty's chain arrives in plaintext
-in `revoke_and_ack`, which our endpoint is meant to learn, so it costs no MPC:
-store it in the usual 49 buckets and run BOLT's derivation check locally.
-Receiving those secrets is safe for any single custodian to do, because
-punishing a cheat also needs our `revocation_basepoint_secret`, which is
-threshold-shared. A payment costs one MPC operation, not two.
+`shachain_step` takes, in order: `K` sequential edges, `N` parallel chains,
+`B2A` (0/1), `CHECK` (0/1, reveals every lane for testing), `SEP` (feed the
+chains as separate inputs, needed for BMR), `IDX` (walk the exact path for
+one shachain index instead of K edges), `EXPORT` (write scalar shares for
+point export), and `CONTRIB` (build the input from several parties' XORed
+contributions).
 
 ## Background
 
 BOLT #3's `generate_from_seed(seed, I)` walks the set bits of `I` from bit 47
 down, flipping each and hashing. Clearing the lowest set bit of `I` gives its
 parent `p = I & (I-1)`, and `Gen(seed, I) = SHA256(flip_ctz(I)(Gen(seed, p)))`:
-every tree edge is one SHA-256. Lightning consumes indices in decreasing order,
-which is a right-child-first DFS of that tree, so keeping the DFS frontier
-(at most 49 secret-shared nodes) makes the amortized cost one SHA-256 per
-commitment and the cold start 48. Any quorum can rebuild the frontier from the
-shared seed in at most 48 hashes, so nothing but the seed sharing needs to
-persist across sessions.
+every tree edge is one SHA-256. Lightning consumes indices in decreasing
+order, which is a right-child-first DFS of that tree, so keeping the DFS
+frontier makes the amortized cost one SHA-256 per commitment and the cold
+start 48. Because it is a tree rather than a chain, secrets are produced
+incrementally and there is never a need to compute them all: 2^48 of them
+exist.
 
 ## Not covered here
 
-The release-authorization layer binding revocation to the channel state
-machine, quorum changes and share refresh, and network runs
-(see docs/wan-plan.md). One caveat for the BMR direction: a single
-party can evaluate a precomputed garbled circuit, but it only obtains output
-labels, and decoding them needs shares held by a quorum, so single-party
-evaluation moves the work without moving the knowledge. Release of a secret
-still requires a quorum and the authorization layer.
+The release-authorization layer, which binds revocation to the channel state
+machine and is now the largest unbuilt piece, with several other items
+deferred into it (see [docs/todo.md](docs/todo.md)). Also absent: refreshing
+shares over the life of a channel, authenticated coordinator-to-member calls,
+and a wide-area
+measurement of the current system, since the payment path, recovery and key
+material all changed after the cross-region run.
 
 ## License
 
