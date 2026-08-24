@@ -27,6 +27,9 @@ package is evaluated in a fresh process (see below).
 | K=48 cold start, semi-honest | 0.54 s | 8.7 KB | 3 | 3.8 s | 659 MB |
 | K=48 cold start, Rep3 malicious (comparison) | 2.4 s | 19 MB | 77,516 | 2.4 s | 19 MB |
 
+The Rep3 comparison row is a 48-edge chain, so the later batching change does
+not affect it; a chain has no independent edges to group.
+
 Online evaluation is ~10 ms per edge of local AES work, single-threaded, and
 the online traffic does not grow with K: one label exchange for the whole
 chain.
@@ -37,10 +40,13 @@ chain.
    garbling and evaluation share a process) plus ~0.5 s of local compute,
    against ~77,000 sequential rounds for Rep3. Over any real network this is
    the difference between sub-second and minutes.
-2. The garbling price is ~34 MB per edge per party (malicious; 100 MB global),
-   so a 48-edge cold-start package is ~1.6 GB per party. That is affordable as
-   a per-channel one-off but rules out garbling deep lookahead buffers;
-   steady-state derivation should stay on Rep3 in the background.
+2. The garbling price is traffic, not storage, and the two were conflated
+   here. Garbling sends ~34 MB per edge per party (malicious; 100 MB global),
+   so the 48-edge cold start moves ~1.6 GB per party over the wire. The
+   package that traffic produces is much smaller: 0.21 GB per party on disk,
+   measured. Both are affordable as a per-channel one-off, and the traffic is
+   what rules out garbling deep lookahead buffers, so steady-state derivation
+   should stay on Rep3 in the background.
 3. MP-SPDZ's garbling phase is itself round-heavy (~1,700 rounds per edge) and
    the rounds scale linearly when batching independent circuits, because the
    implementation garbles program segments sequentially. The BMR protocol
@@ -52,8 +58,12 @@ chain.
 
 ## Suggested architecture
 
-- Steady state: Rep3 in the background with a lookahead buffer; B2A and scalar
-  opening on the hot path (~5 ms, 31 rounds).
+- Steady state: Rep3 in the background with a lookahead buffer. Nothing
+  cryptographic is left on the payment path: revealing a prepared secret is
+  one round of plain messaging, checked against the published point, with no
+  MPC session (see docs/batching.md). An earlier version of this note put the
+  scalar conversion and opening on the hot path, which the lookahead buffer
+  removes.
 - Channel open: pre-garbled 48-edge BMR package per expected channel,
   evaluated in two online rounds at open time; the package is consumed once
   and its storage freed.

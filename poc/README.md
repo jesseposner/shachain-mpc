@@ -28,14 +28,19 @@ spawns four member agents on localhost and runs:
 
 ```
 == setup: dealing RSS summands member-to-member
-== pre-garbled channel-open package stockpiled      23 s, before the seed is used
-== channel open via stockpiled garbled package      1.7 s
-== steady state: 6 updates                          0.4-5 s each
+== pre-garbled channel-open package stockpiled      ~23 s, before the seed is used
+== channel open via stockpiled garbled package      ~2 s
+== steady state: 6 updates                          0.3 s, or ~5 s when the tree carries
 == crash: all volatile masks destroyed; member 2 offline
-== quorum change to [0, 1, 3] + RESTORE             92 hashes, 19 s
+== quorum change to [0, 1, 3] + RESTORE             92 hashes, 17.6 s
 == continuing: 3 updates with the new quorum
-== distributed PoC complete in 62 s: LDK accepted every point and secret
+== distributed PoC complete in ~59 s: LDK accepted every point and secret
 ```
+
+Most updates cost 0.3 s and some cost ~5 s: commitment c needs v2(c) new hash
+edges, so most need none and every 2^k-th needs k. Revealing a secret is not
+in either figure, because it no longer runs an MPC session at all (see
+docs/batching.md).
 
 The RESTORE rebuilds the frontier from the seed summands alone and
 re-derives prepared-but-unreleased leaves, so the revocation pending at
