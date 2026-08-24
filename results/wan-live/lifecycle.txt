@@ -1,5 +1,0 @@
-usage: coordinator.py [-h] [--local] [--members MEMBERS]
-                      [--mpc-hosts MPC_HOSTS] [--updates UPDATES]
-                      [--after AFTER] [--mpspdz MPSPDZ]
-                      [--cold-start {package,bmr,field}]
-coordinator.py: error: unrecognized arguments: --skip-crash
