@@ -17,22 +17,23 @@ reading the code. Grouped by what blocks what, not by file.
 Nothing gates the release of a per-commitment secret; `release_leaf` opens one
 whenever asked.
 
-- `poc/README.md:62` "Nothing gates `release_leaf`: the authorization layer is
+- `poc/README.md`: "Nothing gates `release_leaf`: the authorization layer is
   the largest open work item and is deliberately absent here."
-- `docs/findings.md:71` "Releasing `s_c` must be bound to the same durable
-  channel-state transition that authorizes Iceberg signing, with rollback
-  protection at honest custodians."
+- `docs/findings.md`, "The authorization / anti-rollback layer is unbuilt":
+  "Releasing `s_c` must be bound to the same durable channel-state
+  transition that authorizes Iceberg signing, with rollback protection at
+  honest custodians."
 
 This is a hub, not a leaf. Five other items are explicitly deferred *into* it,
 so none of them can close until it exists:
 
 | deferred item | source |
 |---|---|
-| abort-on-invalid-scalar as release policy | `docs/findings.md:67` |
-| garbled-package single-use enforcement | `results/bmr-notes.md:102`, `abdac7e` |
-| garbled-package integrity binding (MAC/hash at garble time) | `results/bmr-notes.md:102` |
-| authenticating member-held masks | `results/bmr-notes.md:111` |
-| BMR-to-Rep3 handoff authentication | `docs/findings.md:75` |
+| abort-on-invalid-scalar as release policy | `docs/findings.md`, "The validity check does not gate anything yet" |
+| garbled-package single-use enforcement | `results/bmr-notes.md`, "strictly one-time-use"; `abdac7e` |
+| garbled-package integrity binding (MAC/hash at garble time) | `results/bmr-notes.md`, "a MAC or hash committed at garbling time" |
+| authenticating member-held masks | `results/bmr-notes.md`, "Authenticating member-held masks" |
+| BMR-to-Rep3 handoff authentication | `docs/findings.md`, "BMR-to-Rep3 handoff" |
 
 ### 1.2 Setup is not a real ceremony
 
@@ -47,8 +48,9 @@ security is now Iceberg's key generation's. See docs/key-material.md.
 Each summand comes from a single originator with no check that the same bytes
 went to every holder.
 
-- `poc/README.md:65` "deals each summand from a single originator without
-  duplicate-consistency checks; real setup is a verified distribution ceremony."
+- `poc/README.md`, since rewritten: "deals each summand from a single
+  originator without duplicate-consistency checks; real setup is a verified
+  distribution ceremony."
 - commit `5767f2a` "Real deployments replace this input step with the joint seed
   generation protocol."
 
@@ -71,7 +73,8 @@ three contributions versus one.
 
 ### 1.3 All TLS private keys originate on one node
 
-- `poc/README.md:64` "Setup ships all TLS keys to every member."
+- `poc/README.md`: "Setup ships all TLS keys to every member, and models
+  Iceberg's trusted dealer".
 - `wan/run-wan.sh:138` generates every party's certificate on member 0 via
   `setup-ssl.sh 3`, then distributes. Member 0 therefore holds every member's
   private key.
@@ -102,7 +105,7 @@ separate problems, in increasing severity:
     caller-supplied with the same join semantics, so it need not be an MP-SPDZ
     party binary at all.
 
-The only control is the network: `wan/README.md:91` notes the agents listen only
+The only control is the network: `wan/README.md` notes the agents listen only
 inside the WireGuard mesh. That is a real mitigation, but a network-layer one:
 any future port exposure, or one compromised mesh peer, converts directly into
 custodian compromise on all four nodes.
@@ -120,13 +123,13 @@ rather than a live hole.
 
 ### 1.5 Garbled packages are single-use by convention only
 
-Evaluating one package on two inputs leaks. `results/bmr-notes.md:80` records
+Evaluating one package on two inputs leaks. `results/bmr-notes.md` records
 that the runtime was tested and "will happily run one" second evaluation.
 `poc/member.py:180` carries a comment and a delete; nothing enforces it.
 
 ### 1.6 Share refresh
 
-Named exactly once in the entire repo (`README.md:147`, under "Not covered
+Named exactly once in the entire repo (`README.md`, under "Not covered
 here") and tracked nowhere else. Quorum *change* is demonstrated (Act IV);
 re-randomizing durable summands so slowly-gathered shares stop being useful is
 absent. The most under-tracked item in this list.
@@ -162,7 +165,7 @@ harmless unless pushed. Delete when convenient.
 
 ### 2.3 No spend guard on live instances
 
-`wan/README.md:83` "Instances left running are the only way this gets
+`wan/README.md`: "Instances left running are the only way this gets
 expensive." No automatic teardown, timeout, or budget ceiling; cost containment
 depends on a human running `teardown.sh`.
 
@@ -178,10 +181,11 @@ exposed" is asserted rather than audited.
 
 ### 3.1 Background derivation service with a lookahead buffer
 
-The whole latency argument depends on it (`README.md:71`), and it does not
+The whole latency argument depends on it (`README.md`, "Why a payment is one
+round"), and it does not
 exist. Related: garbling cannot serve the buffer, since a 48-edge package is
 ~1.6 GB per party, so "steady-state derivation should stay on Rep3 in the
-background" (`results/bmr-notes.md:40`).
+background" (`results/bmr-notes.md`).
 
 ### 3.2 Package stockpiling as an operational system
 
@@ -196,7 +200,8 @@ it no longer costs anything at all. Prepared values are hidden under a
 replicated sharing, so a member can drop out and the new quorum simply
 continues. See docs/buffer-storage.md.
 
-`results/bmr-notes.md:60` proposes it; the PoC does quorum change through the
+`results/bmr-notes.md`, "Quorum change: same pattern as channel open",
+proposes it; the PoC does quorum change through the
 field engine instead (92 hashes, ~19 s).
 
 ### 3.4 Availability under a corrupt minority
@@ -209,35 +214,40 @@ mitigation for the denial path.
 ## Tier 4: Validation gaps
 
 - ~~**WAN confirmation.** The headline claim, package open in two rounds,
-  latency-independent, is still unconfirmed (`results/bmr-notes.md:116`).~~
+  latency-independent, is still unconfirmed (`results/bmr-notes.md`, "Open
+  questions").~~
   **CONFIRMED, at three rounds rather than two.** Both cross-region runs have
   landed. A stockpiled package evaluated in 4.8 s across three continents,
   against the 54.5 minutes that run took to compute the same 48 edges
-  (`results/wan-20260823.md:85`), in three online rounds and 8.7 KB
-  (`docs/findings.md:85`).
+  (`results/wan-20260823.md`, "The lifecycle: channel open from a stockpiled
+  package"), in three online rounds and 8.7 KB (`docs/findings.md`, "Channel
+  open resolved by garbled circuits").
 - **Two WAN configurations skipped deliberately**: `mal-rep-bin` K=48 and
-  in-session BMR garbling K=48 (`wan/README.md:101`). Model-derived only.
-- **daBit binding assumed, not re-proven** (`docs/findings.md:63`): "We measured
-  it; we did not re-prove it."
+  in-session BMR garbling K=48 (`wan/README.md`, "Skipped deliberately").
+  Model-derived only.
+- **daBit binding assumed, not re-proven** (`docs/findings.md`, "daBit
+  conversion binding"): "We measured it; we did not re-prove it."
 - **LDK interop tested on eight secrets** (`fc5d681`), not across the index
   space.
 - **t=3 bandwidth**: 10x t=2, constraining lookahead depth
-  (`results/shamir-t3.md:21`); no buffer-sizing analysis exists.
+  (`results/shamir-t3.md`, "bandwidth is the planning constraint"); no
+  buffer-sizing analysis exists.
 - **AWS `PendingVerification` retry** is calibrated to one observation
-  ("cleared within minutes for us", `wan/README.md:63`) with no timeout policy.
+  ("cleared within minutes for us", `wan/README.md`) with no timeout policy.
 
 ---
 
 ## Tier 5: Engineering debt
 
-- **Compilation dominates the critical path.** `poc/README.md:68`: a production
+- **Compilation dominates the critical path.** `poc/README.md`: a production
   engine compiles step templates once. This is most of the PoC's wall clock and
   none of its protocol cost.
 - **Out-of-tree MP-SPDZ patches** (`patches/`) for clang and for BMR phase
   timing, never upstreamed; `5c4160f` extended rather than retired them.
 - **MP-SPDZ networking limitation.** Every party dials party 0 as a client, and
   an EC2 instance cannot reach its own public IP, so WireGuard is a workaround
-  every future deployment inherits (`wan/README.md:43`, `5c4160f`).
+  every future deployment inherits (`wan/README.md`, "cannot reach its own
+  public IP"; `5c4160f`).
 - **Three cold-start modes** (`package`, `bmr`, `field`) must all stay correct.
 - **BMR lacks vectorised input**, worked around with a separate-inputs program
   mode (`7227ad9`).
@@ -255,15 +265,21 @@ mitigation for the denial path.
 
 ## Tier 6: Documentation inconsistencies
 
-- `docs/findings.md:75` still lists the BMR-to-Rep3 handoff as open; `cef7ea4`
-  built it. Only the authentication half remains open.
-- `docs/findings.md:81` cites `docs/wan-plan.md` as the deferred plan of record;
-  that document is now marked superseded.
-- `docs/findings.md:82` says the point-export harness "simulates three parties in
-  one process": stale since `67bbabd` split the PoC into per-member agents.
-- `results/wan-20260823-1537/` holds an aborted run: an empty latency matrix
-  committed alongside bootstrap logs, which reads as a completed measurement.
-  Delete it or annotate why it is kept.
+- ~~`docs/findings.md` still lists the BMR-to-Rep3 handoff as open.~~
+  **RESOLVED.** It now says the handoff works and is measured, with only the
+  authentication half open.
+- ~~`docs/findings.md` cites `docs/wan-plan.md` as the deferred plan of
+  record.~~ **RESOLVED.** That citation is gone from the document.
+- ~~`docs/findings.md` says the point-export harness "simulates three parties
+  in one process": stale since `67bbabd`.~~ **NOT A DEFECT.**
+  `scripts/point_export.py` does still simulate three parties in one process.
+  `67bbabd` split the PoC agents, not this harness.
+- ~~`results/wan-20260823-1537/` holds an aborted run.~~ **RESOLVED.** The
+  directory no longer exists.
+
+Line-number citations into living documents rot. Every reference in this file
+now names a heading or quotes a phrase instead; six had already drifted by
+about fifty lines when this was written.
 
 ---
 
