@@ -1,0 +1,110 @@
+# SHA-256 built from MP-SPDZ's own 32-bit integers instead of the Bristol
+# circuit, to cut communication rounds.
+#
+# Rounds are what a wide-area deployment pays for, and rounds equal the
+# circuit's AND-depth: the Bristol sha256 circuit measures 1,607 deep and
+# costs 1,635 rounds. Almost all of that depth is addition, because the
+# circuit uses ripple-carry adders at about 31 deep per 32-bit add.
+#
+# MP-SPDZ's native sbitint addition is far shallower: a chain of 64
+# dependent 32-bit adds costs 113 rounds, about one round of depth each.
+# SHA-256 has two dependent adds per round on its critical path, so building
+# the compression function directly should cost a small multiple of 64 rather
+# than 1,607.
+#
+# Argument: REPEAT, how many independent hashes to evaluate (default 1), to
+# show that independent hashes share rounds.
+from Compiler.GC.types import sbitint, sbitvec, sbits, sbit
+
+REPEAT = int(program.args[1]) if len(program.args) > 1 else 1
+
+W = sbitint.get_type(32)
+
+K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
+    0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+    0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+    0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+    0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+    0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+    0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+    0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+    0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+]
+
+IV = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+      0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]
+
+
+def rotr(x, n):
+    """Rotate a 32-bit word right. Wire permutation, so free."""
+    b = x.bit_decompose(32)
+    return W.bit_compose([b[(i + n) % 32] for i in range(32)])
+
+
+def shr(x, n):
+    """Shift a 32-bit word right, zero filled. Free."""
+    b = x.bit_decompose(32)
+    return W.bit_compose([b[i + n] if i + n < 32 else sbit(0)
+                          for i in range(32)])
+
+
+def compress(words):
+    """SHA-256 over one 512-bit block given as sixteen 32-bit words."""
+    w = list(words)
+    for i in range(16, 64):
+        s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ shr(w[i - 15], 3)
+        s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ shr(w[i - 2], 10)
+        w.append(w[i - 16] + s0 + w[i - 7] + s1)
+
+    a, b, c, d, e, f, g, h = [W(v) for v in IV]
+    for i in range(64):
+        S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)
+        ch = (e & f) ^ (~e & g)
+        t1 = h + S1 + ch + W(K[i]) + w[i]
+        S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)
+        maj = (a & b) ^ (a & c) ^ (b & c)
+        t2 = S0 + maj
+        h, g, f, e, d, c, b, a = g, f, e, d + t1, c, b, a, t1 + t2
+
+    return [x + W(v) for x, v in zip([a, b, c, d, e, f, g, h], IV)]
+
+
+def words_from_vec(x):
+    """A 32-byte value in the repository's bit convention (v[k] is bit
+    7 - k mod 8 of byte k div 8) as eight 32-bit words, most significant
+    bit first within each word."""
+    return [W.bit_compose([x.v[32 * j + 31 - i] for i in range(32)])
+            for j in range(8)]
+
+
+def vec_from_words(ws):
+    """Eight 32-bit words back to the same bit convention."""
+    v = [None] * 256
+    for j, word in enumerate(ws):
+        b = word.bit_decompose(32)
+        for i in range(32):
+            v[32 * j + 31 - i] = b[i]
+    return sbitvec.from_vec(v)
+
+
+def sha256_native(x):
+    """SHA-256 of exactly 32 secret bytes: one block, fixed padding."""
+    words = words_from_vec(x)
+    words.append(W(0x80000000))          # the padding one bit
+    words += [W(0)] * 6
+    words.append(W(256))                 # the length, in bits
+    return vec_from_words(compress(words))
+
+
+t256 = sbitvec.get_type(256)
+xs = [t256.get_input_from(0) for _ in range(REPEAT)]
+
+start_timer(1)
+outs = [sha256_native(x) for x in xs]
+stop_timer(1)
+
+for o in outs:
+    o.reveal().print_reg()
