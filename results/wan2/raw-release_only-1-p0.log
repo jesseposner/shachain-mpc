@@ -1,0 +1,4 @@
+Using statistical security parameter 40
+Starting timer 1 at 0 (0 MB, 0 rounds, 0 CPU seconds) after 1.7383e-05
+Fatal error in communication: read_some: stream truncated [asio.ssl.stream:1]
+This is probably because party 1 encountered a problem.

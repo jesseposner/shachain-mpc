@@ -1,0 +1,26 @@
+== setup: dealing RSS summands member-to-member
+   dealt 4 Iceberg shares of 3 seeds each
+== channel open: 48-edge cold start via replicated MPC
+   [step shachain_engine-1: 48 edges, Data sent = 18.6973 MB in ~77151 rounds (party 0 only; use '-v' for more details)]
+   cold start 3160.0s
+== steady state: 3 updates
+   [step shachain_engine-2: 0 edges, Data sent = 0.469749 MB in ~58 rounds (party 0 only; use '-v' for more details)]
+   state 0: point published (6.9s)
+   [step shachain_engine-3: 0 edges, Data sent = 0.469749 MB in ~58 rounds (party 0 only; use '-v' for more details)]
+   [release state 0: one round, 139 ms to gather summands from 3 members]
+   state 1: point published, state 0 revoked (7.2s)
+   [step shachain_engine-4: 1 edges, Data sent = 0.831125 MB in ~1669 rounds (party 0 only; use '-v' for more details)]
+   [release state 1: one round, 139 ms to gather summands from 3 members]
+   state 2: point published, state 1 revoked (82.1s)
+== crash: volatile state destroyed; member 2 offline
+== quorum change to [0, 1, 3], continuing without a rebuild
+   the prepared buffer is a replicated sharing, so the new quorum
+   derives every summand it needs and nothing has to be recomputed
+== continuing: 2 updates with the new quorum
+   [step shachain_engine-5: 0 edges, Data sent = 0.469749 MB in ~58 rounds (party 0 only; use '-v' for more details)]
+   [release state 2: one round, 184 ms to gather summands from 3 members]
+   state 3: point published, state 2 revoked (8.5s)
+   [step shachain_engine-6: 2 edges, Data sent = 1.19242 MB in ~3276 rounds (party 0 only; use '-v' for more details)]
+   [release state 3: one round, 184 ms to gather summands from 3 members]
+   state 4: point published, state 3 revoked (172.1s)
+== distributed PoC complete in 3437.7s: LDK accepted every point and secret

@@ -1,0 +1,24 @@
+--- shachain_step-1-1-0-0 (malicious-rep-bin-party.x)
+Time = 66.3965 seconds 
+Time1 = 65.54 seconds (0 MB, 0 rounds, 0.113633 CPU seconds)
+Time2 = 0.608329 seconds (0 MB, 0 rounds, 0.00124875 CPU seconds)
+Data sent = 0.482632 MB in ~1635 rounds (party 0 only; use '-v' for more details)
+--- shachain_step-1-1-1-0 (malicious-rep-field-party.x)
+Time = 67.9323 seconds 
+Time1 = 65.5451 seconds (0.467944 MB, 1614 rounds, 0.129019 CPU seconds)
+Time2 = 0.608423 seconds (0.01456 MB, 16 rounds, 0.00133551 CPU seconds)
+Time3 = 1.64048 seconds (0.348165 MB, 31 rounds, 0.0107169 CPU seconds)
+Data sent = 0.830845 MB in ~1665 rounds (party 0 only; use '-v' for more details)
+--- shachain_step-1-100-0-0 (malicious-rep-bin-party.x)
+Time = 77.9323 seconds 
+Time1 = 76.7058 seconds (0 MB, 0 rounds, 0.184989 CPU seconds)
+Time2 = 0.971736 seconds (0 MB, 0 rounds, 0.00323222 CPU seconds)
+Data sent = 4.59869 MB in ~1880 rounds (party 0 only; use '-v' for more details)
+--- release_only-1 (malicious-rep-bin-party.x)
+Starting timer 1 at 0 (0 MB, 0 rounds, 0 CPU seconds) after 1.7383e-05
+Fatal error in communication: read_some: stream truncated [asio.ssl.stream:1]
+This is probably because party 1 encountered a problem.
+--- release_only-100 (malicious-rep-bin-party.x)
+Starting timer 1 at 0 (0 MB, 0 rounds, 0 CPU seconds) after 2.2049e-05
+Fatal error in communication: read_some: stream truncated [asio.ssl.stream:1]
+This is probably because party 1 encountered a problem.

@@ -1,0 +1,3 @@
+Using statistical security parameter 40
+Starting timer 1 at 0 (0 MB, 0 rounds, 0 CPU seconds) after 1.9043e-05
+Fatal error at 257 (INPUTBVEC): not enough inputs in Player-Data/Input-P1-0
