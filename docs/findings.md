@@ -16,6 +16,30 @@ derivation structure (`insert_secret`). SHA-256 has no algebra to exploit, so
 the secrets must be derived inside Boolean-circuit MPC or the seed must sit
 with some single party.
 
+## Only half the problem needs thresholding
+
+A channel runs two shachains, and only one of them is expensive.
+
+**Ours.** We reveal a per-commitment secret for the state we are retiring.
+No custodian may learn a future one, so this chain has to be derived inside
+MPC. Everything measured in this repository concerns this chain.
+
+**Theirs.** The counterparty reveals their secret to us in `revoke_and_ack`.
+It arrives in plaintext and our endpoint is supposed to learn it. Storing it
+is the ordinary 49-bucket structure and checking it is BOLT's local
+derivation check, so this chain costs no MPC at all.
+
+Holding every secret we have received is also not, by itself, dangerous. To
+punish a cheating counterparty the endpoint needs the revocation private
+key, which combines their revealed secret with our own
+`revocation_basepoint_secret`, and that basepoint secret is threshold-shared
+like any other key. One custodian with the full history of received secrets
+and no quorum can do nothing with them.
+
+The practical consequence is that a payment costs the group exactly one MPC
+operation, the opening of a prepared outbound secret, while the inbound half
+is free local work.
+
 ## What is established, with evidence
 
 1. **Exact BOLT compatibility, end to end.** The reference implementation

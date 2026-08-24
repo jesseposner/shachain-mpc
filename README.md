@@ -129,6 +129,17 @@ Scripts/mal-rep-field.sh shachain_step-1-1000-1-0 -P $Q
 Program arguments: `K` sequential edges, `N` parallel chains, `B2A` (0/1),
 `CHECK` (0/1, reveals outputs for testing).
 
+## Only the outbound chain needs MPC
+
+A channel has two shachains. The one we generate must be derived inside MPC,
+since no custodian may learn a future per-commitment secret; that chain is
+what everything here measures. The counterparty's chain arrives in plaintext
+in `revoke_and_ack`, which our endpoint is meant to learn, so it costs no MPC:
+store it in the usual 49 buckets and run BOLT's derivation check locally.
+Receiving those secrets is safe for any single custodian to do, because
+punishing a cheat also needs our `revocation_basepoint_secret`, which is
+threshold-shared. A payment costs one MPC operation, not two.
+
 ## Background
 
 BOLT #3's `generate_from_seed(seed, I)` walks the set bits of `I` from bit 47
