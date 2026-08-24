@@ -45,7 +45,8 @@ is free local work.
 1. **Exact BOLT compatibility, end to end.** The reference implementation
    passes the five official BOLT #3 test vectors (`scripts/ref.py selftest`).
    The MPC output equals the reference byte-for-byte under six protocols,
-   including the invalid-scalar branch (`scripts/test.sh`, 19 cases). Secrets
+   including the invalid-scalar branch and every lane of a vectorised hash
+   (`scripts/test.sh`, 23 cases). Secrets
    derived by the maliciously secure MPC are accepted by LDK's shachain
    verifier, which also rejects all 32 single-byte corruptions and re-derives
    stored secrets (`scripts/ldk_check.sh`, rust-lightning 0.1).
@@ -61,25 +62,46 @@ is free local work.
    and bandwidth cost; they say nothing about the wide-area cost, which is
    round count times latency (`results/wan-20260823.md`).
 
-3. **Rounds, not compute, are the constraint.** One edge is ~1,630 sequential
+3. **Rounds, not compute, are the constraint.** One edge is ~1,635 sequential
    communication rounds, the AND-depth of the SHA-256 circuit, which measured
    65 s across three continents against 58 ms on one machine. So derivation
-   has to run as background precomputation into a lookahead buffer. What is
-   left on the payment path is revealing an already-prepared secret, and that
-   is one round: the members send the masks they hold and the adapter checks
-   the result against the point already published, with no MPC session at
-   all. The wide-area figure measured for that operation, 0.18 s, is for its
-   earlier six-round form; the one-round form postdates the machines.
+   has to run as background precomputation into a lookahead buffer, and
+   refilling 2^k leaves costs k tree levels rather than 2^k hashes, so a
+   1,024-deep buffer costs about eleven minutes and sustains a payment every
+   0.64 s per channel (`docs/batching.md`).
+
+   What is left on the payment path is revealing an already-prepared secret,
+   and that is one round with no MPC session at all: the members send the
+   summands they hold, the adapter compares the copies it receives and
+   XORs, and the result is checked against the point already published. The
+   wide-area figure measured for that operation, 0.18 s, is for an earlier
+   six-round MPC form; the one-round form postdates that run.
 
 4. **Channel open resolved by garbled circuits.** The 48-edge cold start
    cannot be computed before the seed exists, but its garbled circuit can:
    we added package persistence to MP-SPDZ's BMR, and the measured flow is
-   garble+dump in advance (17 s, 0.21 GB per party on disk), then a fresh
-   process evaluates the package in 0.47 s, 8.7 KB, and two online rounds,
-   independent of network latency (`results/bmr-notes.md`). The distributed
-   PoC stockpiles the package at setup and opens the channel in 1.7 s.
+   garble and dump in advance (0.21 GB per party on disk), then a fresh
+   process evaluates the package in three online rounds and 8.7 KB,
+   independent of network latency (`results/bmr-notes.md`). Across three
+   continents that made channel open 4.8 s against the 54.5 minutes the same
+   cold start takes computed on the critical path.
 
-5. **Point export closes the pipeline.** From the replicated Z_q sharing,
+5. **A quorum change costs nothing.** Prepared secrets are hidden under a
+   replicated sharing derived from the seeds, so any quorum reconstructs
+   them. A member dropping out mid-channel does not destroy the buffer and
+   nothing is rebuilt. This replaced a 77,151-round rebuild that measured 126
+   minutes across three continents, during which the channel could not
+   advance (`docs/buffer-storage.md`).
+
+6. **Setup is Iceberg's, not a second scheme.** The shachain generates no key
+   material of its own. An Iceberg share is already seeds indexed by the
+   groups of t-1 participants the holder is not in, which at t=2 is exactly a
+   summand held by everyone except one member. `scripts/iceberg.py`
+   reimplements Iceberg's dealing and tagged hashing byte-for-byte, checked
+   by recomputing the SHA-256 midstates its C hard-codes, and derives
+   shachain values under separate tags (`docs/key-material.md`).
+
+7. **Point export closes the pipeline.** From the replicated Z_q sharing,
    each party computes one curve point per share component locally; replicated
    pairs are cross-checked by point equality, and the sum is `P = s*G`. The
    prototype (`scripts/point_export.py`) verifies against the reference
@@ -102,16 +124,24 @@ is free local work.
   must be bound to the same durable channel-state transition that authorizes
   Iceberg signing, with rollback protection at honest custodians. This is the
   largest remaining work item and it is systems design, not cryptography.
-- **BMR-to-Rep3 handoff.** Feeding a BMR cold-start output into the Rep3
-  steady state as an authenticated Boolean sharing has a sketch (XOR-masked
-  outputs) but no design for authentication against a malicious party.
-- **Loopback numbers.** All measurements are one machine, three or five
-  processes. The rounds x RTT model says WAN behavior is derivable, and the
-  BMR online phase is the claim that most deserves a live confirmation
-  (`docs/wan-plan.md`, deferred).
-- **Prototype quality.** MP-SPDZ is a research framework; the point-export
-  harness simulates three parties in one process; nothing here is production
-  software.
+- **BMR-to-Rep3 handoff.** The masked-output handoff works and is measured;
+  authenticating the member-held summands against a malicious party is part
+  of the authorization layer above.
+- **Derived rather than measured, for two headline figures.** The one-round
+  payment and the zero-round quorum change both postdate the cross-region
+  run, so their wide-area costs come from multiplying rounds by the 40 ms per
+  round those nodes exhibited. The round counts themselves are measured, and
+  the model predicted values it was not fitted to, but a fresh run is what
+  would settle them.
+- **Member agents do not authenticate their caller.** Both code-execution
+  paths in `/step` are closed, but any peer reaching the port can still
+  overwrite a member's seeds. They are safe only behind the private network
+  they run on.
+- **Prototype quality.** MP-SPDZ is a research framework, carrying three
+  out-of-tree patches of ours including one for a correctness bug in its
+  vectorised hashing; the point-export harness simulates three parties in one
+  process; per-step compilation dominates the prototype's wall clock and none
+  of its protocol cost. Nothing here is production software.
 
 ## The shape of the answer
 
