@@ -24,7 +24,7 @@
 import json
 import os
 
-from circuit import sha256
+from circuit import sha256, Circuit
 from Compiler.GC.types import sbitvec, sbit, sbits
 
 NONCE = program.args[1] if len(program.args) > 1 else '0'
@@ -34,6 +34,42 @@ SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD036
 plan = json.load(open(os.environ['ENGINE_PLAN']))
 t256 = sbitvec.get_type(256)
 values = {}
+
+
+# circuit.sha256 builds its padding and initial state with sbit(), which is
+# one bit wide. With a vectorised input that gives lane 0 the constants and
+# every other lane zeros, so only lane 0 comes out correct. Verified: two
+# lanes in, lane 0 matched SHA-256 and lane 1 did not. This version
+# broadcasts each constant across all lanes.
+_SHA_CIRCUIT = Circuit('sha256')
+_SHA_IV = [0x6a, 0x09, 0xe6, 0x67, 0xbb, 0x67, 0xae, 0x85,
+           0x3c, 0x6e, 0xf3, 0x72, 0xa5, 0x4f, 0xf5, 0x3a,
+           0x51, 0x0e, 0x52, 0x7f, 0x9b, 0x05, 0x68, 0x8c,
+           0x1f, 0x83, 0xd9, 0xab, 0x5b, 0xe0, 0xcd, 0x19]
+
+
+def sha256_lanes(x, lanes):
+    """SHA-256 over an sbitvec of `lanes` lanes, correct in every lane."""
+    if lanes == 1:
+        return sha256(x)
+    t = sbits.get_type(lanes)
+    ones = (1 << lanes) - 1
+
+    def const(b):
+        return t(ones if b else 0)
+
+    L = len(x.v)
+    padding = [1]
+    while (len(padding) + L) % 512 != (512 - 64):
+        padding.append(0)
+    padding += [(L >> (63 - i)) & 1 for i in range(64)]
+    padded = x.v + [const(b) for b in padding]
+    state = list(reversed([const((_SHA_IV[i // 8] >> (7 - i % 8)) & 1)
+                           for i in range(256)]))
+    for i in range(0, len(padded), 512):
+        chunk = list(reversed(padded[i:i + 512]))
+        state = _SHA_CIRCUIT(chunk + state).v
+    return sbitvec.from_vec(state)
 
 
 def bolt_flip_index(b):
@@ -125,7 +161,7 @@ for op in plan.get('ops', []):
     v = list(src.v)
     k = bolt_flip_index(op['bit'])
     v[k] = ~v[k]
-    h = sha256(sbitvec.from_vec(v))
+    h = sha256_lanes(sbitvec.from_vec(v), 1)
     values[op['dst']] = sbitvec.from_vec(list(reversed(h.v)))
 stop_timer(1)
 

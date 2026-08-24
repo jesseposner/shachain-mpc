@@ -1,13 +1,35 @@
 # Batching: why the engine is slower than the design allows
 
+**Correction first.** The batched figures originally published here and in
+the results files came from a code path that computed the wrong answer in
+every lane but the first. `circuit.sha256` builds its padding and initial
+state with `sbit()`, which is one bit wide, so a vectorised input gave lane 0
+the constants and every other lane zeros. Nothing caught it because the
+program's check mode revealed lane 0 alone: feeding two lanes, lane 0
+matched SHA-256 and lane 1 did not.
+
+`sha256_lanes()` in both programs now broadcasts each constant across all
+lanes, the check mode reveals every lane, and `scripts/test.sh` runs three
+lanes from three distinct seeds against the reference.
+
+The performance conclusions survive the fix, because the corrected circuit
+is nearly the same size: 64 correct lanes cost 1,775 rounds against 1,621
+for one lane, and 8 lanes cost 1,635. What did not survive is the claim that
+those earlier runs demonstrated correct parallel hashing. They demonstrated
+the cost of a circuit of about the right size.
+
 Measured on loopback, malicious 3-party replicated, 10 hash edges per chain:
 
 | shape | hashes | rounds |
 |---|---:|---:|
-| 1 chain | 10 | 16,119 |
-| 8 chains, one vectorised call | 80 | **16,280** |
-| 2 chains, separate calls | 20 | 32,210 |
-| 4 chains, separate calls | 40 | 64,399 |
+| 1 lane | 1 | 1,621 |
+| 8 lanes, one vectorised call | 8 | **1,635** |
+| 64 lanes, one vectorised call | 64 | **1,775** |
+| 2 chains, separate calls (10 edges each) | 20 | 32,210 |
+| 4 chains, separate calls (10 edges each) | 40 | 64,399 |
+
+The lane rows are from the corrected implementation and verified against the
+plaintext reference in every lane.
 
 Independent hashes cost nothing extra when they are issued as one
 vectorised call over a wide sharing, and cost full price when they are

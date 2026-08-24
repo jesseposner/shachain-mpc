@@ -42,4 +42,34 @@ for K in 0 1 3; do
 done
 # K=0 with an all-0xff input exercises the "not a valid scalar" branch.
 check mal-rep-field $FFS 0 -P $Q
+
+# Vectorised hashing must be correct in EVERY lane, not just the first.
+# circuit.sha256 builds its constants one bit wide, so with a vectorised
+# input only lane 0 was right; nothing caught it because the check mode
+# revealed lane 0 alone.
+lane_check() {
+  python3 - "$MPSPDZ" <<'PYEOF'
+import sys
+def enc(v):
+    b = v.to_bytes(32, 'big'); out = 0
+    for i in range(256):
+        out |= ((b[i // 8] >> (7 - i % 8)) & 1) << i
+    return out
+seeds = [int('01' * 32, 16), int('02' * 32, 16), int('03' * 32, 16)]
+with open(f'{sys.argv[1]}/Player-Data/Input-P0-0', 'w') as f:
+    f.write('\n'.join(str(enc(s)) for s in seeds) + '\n')
+PYEOF
+  ./compile.py -B 256 shachain_step 1 3 0 1 >/dev/null
+  got=$(Scripts/mal-rep-bin.sh shachain_step-1-3-0-1 2>&1         | sed -n 's/^Reg\[[0-9]*\] = 0x\([0-9a-f]*\).*/\1/p' | sort)
+  want=$(python3 -c "
+import sys; sys.path.insert(0, '$HERE/scripts'); import ref
+for s in ('01'*32, '02'*32, '03'*32):
+    print(ref.walk(bytes.fromhex(s), [47]).hex())" | sort)
+  if [ "$got" = "$want" ]; then
+    echo "PASS vectorised hashing correct in all 3 lanes"
+  else
+    echo "FAIL vectorised lanes"; echo "got: $got"; echo "want: $want"; fail=1
+  fi
+}
+lane_check
 exit $fail
