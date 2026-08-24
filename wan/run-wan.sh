@@ -179,7 +179,11 @@ if want bench; then
   B0=$PUB0; B1=$PUB1; B2=$PUB2
   for IP in $B0 $B1 $B2; do
     $SSHN "$IP" true 2>/dev/null
-    $SSHN "$U@$IP" "cd \$HOME/MP-SPDZ && python3 \$HOME/shachain-mpc/scripts/input.py . 0101010101010101010101010101010101010101010101010101010101010101 1100 >/dev/null 2>&1" &
+    # Write an input file for all three parties, not only party 0.
+    # release_only takes an input from every member, so a single file
+    # leaves parties 1 and 2 with nothing and the run dies on a truncated
+    # stream that names the wrong party as the cause.
+    $SSHN "$U@$IP" "cd \$HOME/MP-SPDZ && python3 \$HOME/shachain-mpc/scripts/input.py . 0101010101010101010101010101010101010101010101010101010101010101 1100 3 >/dev/null 2>&1" &
   done
   wait
 

@@ -276,11 +276,12 @@ mitigation for the denial path.
 
 ## Open, found in that run
 
-- **`release_only` does not run under `wan/run-wan.sh`.** The benchmark phase
-  writes an input file for party 0 only, while that program takes an input
-  from all three parties. The manual invocation that worked against the first
-  cluster copied the file by hand. Costs the comparison against the older
-  six-round release form, nothing else.
+- ~~**`release_only` does not run under `wan/run-wan.sh`.**~~ **FIXED.** The
+  benchmark phase wrote an input file for party 0 only, while that program
+  takes an input from all three. Reproduced locally, where the real error is
+  `not enough inputs in Player-Data/Input-P1-0`; the WAN run showed only
+  party 0's `stream truncated`, which is why it read as a network fault. The
+  phase now writes all three.
 - **Our MP-SPDZ vectorised-hashing patch is checked against the plaintext
   reference, not against upstream.** MP-SPDZ still has the bug; anyone
   reproducing this on a stock checkout gets wrong answers in every lane but
