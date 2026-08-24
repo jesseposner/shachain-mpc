@@ -213,7 +213,7 @@ mitigation for the denial path.
   latency-independent, is still unconfirmed (`results/bmr-notes.md:116`).~~
   **CONFIRMED, at three rounds rather than two.** Both cross-region runs have
   landed. A stockpiled package evaluated in 4.8 s across three continents,
-  against 54.5 minutes to compute the same 48 edges
+  against the 54.5 minutes that run took to compute the same 48 edges
   (`results/wan-20260823.md:85`), in three online rounds and 8.7 KB
   (`docs/findings.md:85`).
 - **Two WAN configurations skipped deliberately**: `mal-rep-bin` K=48 and

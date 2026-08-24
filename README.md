@@ -36,7 +36,7 @@ watch.
 | the same reveal, earlier six-round MPC form | 6 | 0.18 s | measured on the WAN |
 | **quorum change** | **0** | **none** | measured on the WAN: the channel continues, nothing is rebuilt |
 | channel open from a stockpiled package | 3 online | **4.8 s** | measured on the WAN |
-| channel open, computed instead | 77,151 | 54.5 min | measured on the WAN |
+| channel open, computed instead | 77,151 | 52.7 min | measured on the WAN |
 | prepare a leaf: validity check and conversion | 47 | 2.25 s | measured on the WAN; background work |
 | one shachain edge | 1,614 | 65.5 s | measured on the WAN |
 | refill a 1,024-leaf buffer | ~16,800 | ~11 min | derived; 97% hashing, buys 1,024 payments |

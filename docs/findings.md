@@ -84,8 +84,9 @@ is free local work.
    garble and dump in advance (0.21 GB per party on disk), then a fresh
    process evaluates the package in three online rounds and 8.7 KB,
    independent of network latency (`results/bmr-notes.md`). Across three
-   continents that made channel open 4.8 s against the 54.5 minutes the same
-   cold start takes computed on the critical path.
+   continents that made channel open 4.8 s against the 52.7 minutes the same
+   cold start takes computed on the critical path
+   (`results/wan-20260824.md`).
 
 5. **A quorum change costs nothing.** Prepared secrets are hidden under a
    replicated sharing derived from the seeds, so any quorum reconstructs
