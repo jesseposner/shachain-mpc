@@ -78,8 +78,10 @@ item 3 below.
    65 s across three continents against 58 ms on one machine. So derivation
    has to run as background precomputation into a lookahead buffer, and
    refilling 2^k leaves costs k tree levels rather than 2^k hashes, so a
-   1,024-deep buffer costs about eleven minutes and sustains a revocation
-   every 0.64 s per channel (`docs/batching.md`).
+   1,024-deep buffer costs 12.6 minutes and sustains a revocation every
+   0.74 s per channel, for 1.09 CPU seconds and 47 MB per signer
+   (`docs/batching.md`). Under 0.2% of one core: the constraint is 18,870
+   sequential round trips, and buffers do not amortise across channels.
 
    What is left on the live path is revealing an already-prepared secret,
    and that is one round with no MPC session at all: the members send the

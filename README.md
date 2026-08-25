@@ -41,7 +41,7 @@ watch.
 | channel open, computed instead | 77,151 | 52.7 min | measured on the WAN |
 | prepare a leaf: validity check and conversion | 47 | 2.25 s | measured on the WAN; background work |
 | one shachain edge | 1,614 | 65.5 s | measured on the WAN |
-| refill a 1,024-leaf buffer | ~16,800 | ~11 min | derived; 97% hashing, buys 1,024 revocations |
+| refill a 1,024-leaf buffer | 18,870 | 12.6 min | rounds measured per level; time derived at 40 ms. Buys 1,024 revocations for 1.09 CPU s and 47 MB per signer |
 | rebuild from the seed (cold start only) | 77,151 | ~51 min | derived; 126 min measured before batching halved it |
 
 Round counts are loopback measurements, which is fine because a round count
@@ -79,9 +79,12 @@ which is the same equation the counterparty verifies.
 
 Everything expensive is background work feeding a lookahead buffer, and the
 buffer only has to stay ahead of consumption. Refilling 2^k leaves costs k
-tree levels rather than 2^k hashes, so a 1,024-deep buffer costs eleven
-minutes and sustains a revocation every 0.64 s per channel. See
-[docs/batching.md](docs/batching.md).
+tree levels rather than 2^k hashes, so a 1,024-deep buffer costs 12.6
+minutes and sustains a revocation every 0.74 s per channel. That refill
+spends 1.09 CPU seconds per signer, under 0.2% of one core, because the cost
+is 18,870 sequential round trips and not arithmetic. Buffers do not amortise
+across channels, so a node with N channels runs N of them and pays N times
+the traffic. See [docs/batching.md](docs/batching.md).
 
 ## Recovery costs nothing
 

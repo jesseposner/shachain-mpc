@@ -79,7 +79,7 @@ one.
 
 At 40 microseconds a round on one machine, serialising 1,024 hashes instead
 of batching them is the difference between 0.6 s and 40 s: annoying. At
-40 ms a round it is the difference between eleven minutes and eighteen
+40 ms a round it is the difference between twelve minutes and eighteen
 hours, which decides whether the architecture works.
 
 
@@ -152,25 +152,56 @@ is already pre-garbled.
 
 ## Sustained throughput per channel
 
-A refill of 2^k leaves costs k tree levels, so k x 1,635 rounds, and buys
-2^k revocations. At this WAN's 40 ms per round:
+A refill of 2^k leaves costs k tree levels and buys 2^k revocations. The
+levels are 1, 2, 4, ... 2^(k-1) lanes wide, and each was measured rather
+than modelled, because rounds turn out to grow with lane width. Loopback,
+malicious 3-party replicated, one hash edge per lane, counters as party 0
+reports them:
 
-| buffer depth | refill time | revocations bought | sustained revocations |
+| lanes | rounds | CPU s | MB |
 |---:|---:|---:|---:|
-| 64 | 6.5 min | 64 | 1 per 6.1 s |
-| 1,024 | 11 min | 1,024 | 1 per 0.64 s |
-| 4,096 | 13 min | 4,096 | 1 per 0.19 s |
+| 1 | 1,635 | 0.073 | 0.48 |
+| 32 | 1,712 | 0.079 | 1.66 |
+| 512 | 2,916 | 0.244 | 22.67 |
+| 2,048 | 6,766 | 0.793 | 90.46 |
+
+Summing the levels, at this WAN's 40 ms per round:
+
+| buffer depth | rounds | refill time | CPU s per signer | MB per signer | sustained revocations |
+|---:|---:|---:|---:|---:|---:|
+| 64 | 9,943 | 6.6 min | 0.45 | 4.9 | 1 per 6.2 s |
+| 1,024 | 18,870 | 12.6 min | 1.09 | 47 | 1 per 0.74 s |
+| 4,096 | 29,833 | 19.9 min | 2.31 | 183 | 1 per 0.29 s |
+
+An earlier version of this table assumed 1,635 rounds per level whatever its
+width, which gave 11 minutes for the 1,024 row and 13 for the 4,096 one.
+Rounds grow from 1,635 at one lane to 6,766 at 2,048, so the real figures are
+12.6 and 19.9 minutes. The shape of the argument survives, and the deepest
+buffer is the one the old model flattered most.
 
 A revocation, not a payment: each commitment update reveals exactly one
 secret, and an isolated payment is two updates, one carrying
 `update_add_htlc` and one carrying `update_fulfill_htlc`. Halve the last
 column to read it as payments, or don't, if HTLCs are batching into shared
-commitments.
+commitments. A forwarding node sits on two channels per payment, so it pays
+four revocations per forwarded attempt, failed attempts included.
 
-Deeper buffers are strictly better, because the cost is the depth and the
-benefit is the width. The limits are refill traffic, which grows with the
-batch, and MP-SPDZ's compiler, which holds the whole circuit in memory. A
-production engine compiling step templates once would remove the second.
+Nothing here is compute-bound. A signer spends 1.09 CPU seconds on the
+1,024-leaf refill it takes 12.6 minutes to complete: under 0.2% of one core,
+single-threaded, the rest of it waiting on 18,870 sequential round trips.
+Buying a bigger machine buys nothing.
+
+Deeper buffers are still better, because the cost is the depth and the
+benefit is the width, but the discount is smaller than the old model
+claimed. The limits are refill traffic, which grows with the batch and is
+what actually binds, and MP-SPDZ's compiler, which holds the whole circuit
+in memory. A production engine compiling step templates once would remove
+the second.
+
+Buffers do not amortise across channels. Each channel derives from its own
+seed, so a node with N channels runs N buffers, costing N x 1.09 CPU seconds
+and N x 47 MB per 1,024 revocations. The refills run concurrently, so wall clock
+does not stack, but traffic does, and traffic is the binding limit.
 
 None of this touches release latency, which is one round regardless: the
 buffer only has to stay ahead of consumption.
