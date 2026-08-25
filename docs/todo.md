@@ -194,8 +194,8 @@ exposed" is asserted rather than audited.
 
 ### 3.1 Background derivation service with a lookahead buffer
 
-The whole latency argument depends on it (`README.md`, "Why a payment is one
-round"), and it does not
+The whole latency argument depends on it (`README.md`, "Why a revocation is
+one round"), and it does not
 exist. Related: garbling cannot serve the buffer, since a 48-edge package is
 ~1.6 GB per party, so "steady-state derivation should stay on Rep3 in the
 background" (`results/bmr-notes.md`).

@@ -36,9 +36,20 @@ key, which combines their revealed secret with our own
 like any other key. One custodian with the full history of received secrets
 and no quorum can do nothing with them.
 
-The practical consequence is that a payment costs the group exactly one MPC
-operation, the opening of a prepared outbound secret, while the inbound half
-is free local work.
+The practical consequence is that a commitment update costs the group one
+prepared outbound secret, while the inbound half is free local work.
+
+The unit there is a revocation, not a payment. Each commitment update revokes
+the previous commitment and reveals exactly one secret, and a payment is
+normally two updates: one carrying `update_add_htlc`, one carrying
+`update_fulfill_htlc`. So an isolated payment consumes two prepared secrets.
+Many HTLCs can also share one `commitment_signed`, which takes a busy channel
+the other way, below one revocation per payment. The engine owes one prepared secret per revocation
+either way.
+
+Nor is the opening itself an MPC operation, though it was when this was first
+written. Revealing a prepared secret runs no circuit and no MPC session; see
+item 3 below.
 
 ## What is established, with evidence
 
@@ -67,10 +78,10 @@ is free local work.
    65 s across three continents against 58 ms on one machine. So derivation
    has to run as background precomputation into a lookahead buffer, and
    refilling 2^k leaves costs k tree levels rather than 2^k hashes, so a
-   1,024-deep buffer costs about eleven minutes and sustains a payment every
-   0.64 s per channel (`docs/batching.md`).
+   1,024-deep buffer costs about eleven minutes and sustains a revocation
+   every 0.64 s per channel (`docs/batching.md`).
 
-   What is left on the payment path is revealing an already-prepared secret,
+   What is left on the live path is revealing an already-prepared secret,
    and that is one round with no MPC session at all: the members send the
    summands they hold, the adapter compares the copies it receives and
    XORs, and the result is checked against the point already published. The

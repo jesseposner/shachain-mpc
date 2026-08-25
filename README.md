@@ -12,7 +12,8 @@ sees an ordinary channel? The shachain is SHA-256 based, so it has none of
 the algebraic structure that makes threshold signing cheap, and the secrets
 have to be derived inside a Boolean-circuit MPC.
 
-They can be, and a payment ends up costing one communication round.
+They can be, and revoking a commitment ends up costing one communication
+round.
 
 ## Only the outbound chain needs MPC
 
@@ -23,7 +24,8 @@ plaintext in `revoke_and_ack`, which our endpoint is meant to learn, so it
 costs no MPC: store it in the usual 49 buckets and run BOLT's derivation
 check locally. Holding every secret received is safe for a single custodian,
 because punishing a cheat also needs our `revocation_basepoint_secret`,
-which is threshold-shared. A payment costs one MPC operation, not two.
+which is threshold-shared. So each commitment update costs the group one
+prepared secret rather than two.
 
 ## Rounds per operation
 
@@ -32,14 +34,14 @@ watch.
 
 | operation | rounds | wide-area cost | how we know |
 |---|---:|---:|---|
-| **reveal a prepared secret (a payment)** | **1** | **139 ms** | measured on the WAN; 184 ms after a quorum change, tracking its slowest leg |
+| **reveal a prepared secret (one revocation)** | **1** | **139 ms** | measured on the WAN; 184 ms after a quorum change, tracking its slowest leg |
 | the same reveal, earlier six-round MPC form | 6 | 0.18 s | measured on the WAN |
 | **quorum change** | **0** | **none** | measured on the WAN: the channel continues, nothing is rebuilt |
 | channel open from a stockpiled package | 3 online | **4.8 s** | measured on the WAN |
 | channel open, computed instead | 77,151 | 52.7 min | measured on the WAN |
 | prepare a leaf: validity check and conversion | 47 | 2.25 s | measured on the WAN; background work |
 | one shachain edge | 1,614 | 65.5 s | measured on the WAN |
-| refill a 1,024-leaf buffer | ~16,800 | ~11 min | derived; 97% hashing, buys 1,024 payments |
+| refill a 1,024-leaf buffer | ~16,800 | ~11 min | derived; 97% hashing, buys 1,024 revocations |
 | rebuild from the seed (cold start only) | 77,151 | ~51 min | derived; 126 min measured before batching halved it |
 
 Round counts are loopback measurements, which is fine because a round count
@@ -47,13 +49,25 @@ is a property of the circuit rather than the network. Wide-area figures are
 either measured on four cross-region nodes or derived by multiplying rounds
 by the 40 ms per round those nodes exhibited, and the table says which.
 
+## The unit is a revocation, not a payment
+
+Everything above is priced per commitment update, because that is what
+consumes a secret: each update revokes the previous commitment and reveals
+exactly one. A payment is normally two updates, one carrying
+`update_add_htlc` and one carrying `update_fulfill_htlc`, so an isolated
+payment consumes two prepared secrets and two rounds, at different moments
+rather than back to back. It also runs the other way, since many HTLCs can
+ride one `commitment_signed`, which is why a busy channel amortizes below
+one revocation per payment. Neither direction changes the engine, which owes the
+channel one prepared secret per revocation whatever the traffic looks like.
+
 Two cross-region runs stand behind these. The first
 (`results/wan-20260823.md`) measured an earlier system; the second
-(`results/wan-20260824.md`) measured this one, after the payment path,
+(`results/wan-20260824.md`) measured this one, after the release path,
 recovery and key material changed. Where they disagree, the later run is the
 current system and says so.
 
-## Why a payment is one round
+## Why a revocation is one round
 
 A prepared secret is a public masked value plus a replicated sharing of
 summands, so revealing it is not a computation. The members send the
@@ -66,7 +80,7 @@ which is the same equation the counterparty verifies.
 Everything expensive is background work feeding a lookahead buffer, and the
 buffer only has to stay ahead of consumption. Refilling 2^k leaves costs k
 tree levels rather than 2^k hashes, so a 1,024-deep buffer costs eleven
-minutes and sustains a payment every 0.64 s per channel. See
+minutes and sustains a revocation every 0.64 s per channel. See
 [docs/batching.md](docs/batching.md).
 
 ## Recovery costs nothing
@@ -134,7 +148,7 @@ machines for a wide-area run. See [poc/README.md](poc/README.md).
 ```
 programs/shachain_step.mpc     benchmark program: K edges, N chains, checks, export
 programs/shachain_engine.mpc   the engine the PoC drives, one plan per step
-programs/release_only.mpc      the payment hot path in isolation
+programs/release_only.mpc      the release hot path in isolation
 poc/                           distributed lifecycle: member agents and coordinator
 scripts/iceberg.py             Iceberg's dealing and tagged hashing, byte-compatible
 scripts/ref.py                 plaintext BOLT #3 reference (selftest = official vectors)

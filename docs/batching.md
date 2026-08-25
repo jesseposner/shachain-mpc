@@ -107,7 +107,7 @@ turns a 126-minute recovery into about 51 minutes.
 plus a replicated sharing of summands, so revealing it is not a computation.
 The members send the summands they hold, the adapter compares the copies it
 receives and XORs, and the result is checked against the point published for
-that state. The payment path is now one
+that state. The release path is now one
 round of plain messaging with no circuit, no compilation and no MPC
 session, against five rounds inside a session before.
 
@@ -153,18 +153,24 @@ is already pre-garbled.
 ## Sustained throughput per channel
 
 A refill of 2^k leaves costs k tree levels, so k x 1,635 rounds, and buys
-2^k payments. At this WAN's 40 ms per round:
+2^k revocations. At this WAN's 40 ms per round:
 
-| buffer depth | refill time | payments bought | sustained rate |
+| buffer depth | refill time | revocations bought | sustained revocations |
 |---:|---:|---:|---:|
 | 64 | 6.5 min | 64 | 1 per 6.1 s |
 | 1,024 | 11 min | 1,024 | 1 per 0.64 s |
 | 4,096 | 13 min | 4,096 | 1 per 0.19 s |
+
+A revocation, not a payment: each commitment update reveals exactly one
+secret, and an isolated payment is two updates, one carrying
+`update_add_htlc` and one carrying `update_fulfill_htlc`. Halve the last
+column to read it as payments, or don't, if HTLCs are batching into shared
+commitments.
 
 Deeper buffers are strictly better, because the cost is the depth and the
 benefit is the width. The limits are refill traffic, which grows with the
 batch, and MP-SPDZ's compiler, which holds the whole circuit in memory. A
 production engine compiling step templates once would remove the second.
 
-None of this touches payment latency, which is one round regardless: the
+None of this touches release latency, which is one round regardless: the
 buffer only has to stay ahead of consumption.
