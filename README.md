@@ -55,10 +55,10 @@ Everything above is priced per commitment update, because that is what
 consumes a secret: each update revokes the previous commitment and reveals
 exactly one. A payment is normally two updates, one carrying
 `update_add_htlc` and one carrying `update_fulfill_htlc`, so an isolated
-payment consumes two prepared secrets and two rounds, at different moments
-rather than back to back. It also runs the other way, since many HTLCs can
-ride one `commitment_signed`, which is why a busy channel amortizes below
-one revocation per payment. Neither direction changes the engine, which owes the
+payment consumes two prepared secrets and two rounds, at different moments.
+It also runs the other way, since many HTLCs can ride one
+`commitment_signed`, which is why a busy channel amortizes below one
+revocation per payment. Neither direction changes the engine, which owes the
 channel one prepared secret per revocation whatever the traffic looks like.
 
 Two cross-region runs stand behind these. The first
