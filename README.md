@@ -217,6 +217,13 @@ earlier system, as was the six-round release form it is compared against,
 which failed in the second run for a reason since fixed (`32221ba`) and has
 not been re-run.
 
+Nor has a second channel. Every per-channel cost here is measured, but a
+node running many of them is that measurement multiplied, and the scaling
+argument in [docs/batching.md](docs/batching.md) rests on refills being
+network-bound rather than compute-bound. The cost that scales worst is
+channel open, at 1.6 GB of garbling traffic per channel per signer, not the
+CPU.
+
 ## License
 
 MIT

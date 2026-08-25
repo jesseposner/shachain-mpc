@@ -198,10 +198,52 @@ what actually binds, and MP-SPDZ's compiler, which holds the whole circuit
 in memory. A production engine compiling step templates once would remove
 the second.
 
-Buffers do not amortise across channels. Each channel derives from its own
-seed, so a node with N channels runs N buffers, costing N x 1.09 CPU seconds
-and N x 47 MB per 1,024 revocations. The refills run concurrently, so wall clock
-does not stack, but traffic does, and traffic is the binding limit.
-
 None of this touches release latency, which is one round regardless: the
 buffer only has to stay ahead of consumption.
+
+## Scaling to many channels
+
+Buffers do not amortise across channels. Each channel derives from its own
+seed, so a node with N channels runs N buffers and pays N times everything
+below. The refills are independent sessions and are network-bound, so wall
+clock does not stack even though traffic does.
+
+Steady state and channel open behave very differently, and only one of them
+is what people expect. Everything per channel is measured; everything per
+node is that measurement multiplied, since no more than one channel has ever
+been run.
+
+**Steady state**, per signer, sustaining a 1,024-leaf buffer on a 12.6 minute
+refill cycle:
+
+| channels | cores | bandwidth | revocations/s | own payments/s | forwarded/s |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 0.001 | 0.5 Mbps | 1.4 | 0.7 | 0.3 |
+| 12 | 0.02 | 6 Mbps | 16 | 8 | 4 |
+| 100 | 0.14 | 50 Mbps | 135 | 68 | 34 |
+
+**Channel open**, per signer, a one-off paid before each channel exists:
+
+| channels | garbling traffic | packages stored |
+|---:|---:|---:|
+| 1 | 1.6 GB | 0.21 GB |
+| 12 | 19 GB | 2.5 GB |
+| 100 | 160 GB | 21 GB |
+
+So the cost that scales badly is not the one usually named. CPU stays under
+a fifth of a core at a hundred channels, because a signer spends 1.09 CPU
+seconds per refill and waits out the other 12.6 minutes. Steady-state
+bandwidth reaches 50 Mbps, which is real but unremarkable.
+
+Channel open is the wall. 1.6 GB of garbling traffic and a 0.21 GB package
+per channel do not amortise against anything, and the one channel measured
+across three continents took 76 minutes to garble (`wan-20260823.md`). A
+hundred channels moves 160 GB and parks 21 GB. It is schedulable, since it
+happens before the channel exists and before the seed does, and it is a
+one-off rather than a per-payment cost. It is still the number that decides
+whether a routing node with a hundred channels is plausible.
+
+What is not measured: two channels. The claim that a hundred concurrent MPC
+sessions per signer interleave cleanly follows from their being network-bound
+rather than compute-bound, but it follows by argument, not by measurement.
+Memory per session is the obvious thing to check first.
