@@ -31,8 +31,8 @@ coordinator to relay one commitment table to every member.
 
 An Iceberg share is "a collection of 32-byte seeds, one for every group of
 t-1 participants that this participant is NOT a member of"
-(`include/secp256k1_iceberg.h`). At t=2 that is one seed per other
-participant: exactly a summand held by everyone except one member, so any
+(`include/secp256k1_iceberg.h`), which at t=2 is one seed per other
+participant and exactly a summand held by everyone except one member, so any
 quorum holds them all and losing a member loses nothing. It is the structure
 this engine had been reinventing.
 
@@ -67,6 +67,5 @@ distributed key generation. The PoC models the dealer, matching
 deploys, and nothing downstream changes, because what arrives is the same
 object.
 
-That last point is the argument the Threshold BOLT Shachain draft asks for
-when it warns against the shachain growing a separate, weaker path beside
-the signing one. Here it does not have one.
+That last point answers the Threshold BOLT Shachain draft's warning: this
+shachain has no separate, weaker path beside the signing one.

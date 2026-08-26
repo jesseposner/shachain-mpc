@@ -60,7 +60,6 @@ It also runs the other way, since many HTLCs can ride one
 `commitment_signed`, which is why a busy channel amortizes below one
 revocation per payment. Neither direction changes the engine, which owes the
 channel one prepared secret per revocation whatever the traffic looks like.
-
 Two cross-region runs stand behind these. The first
 (`results/wan-20260823.md`) measured an earlier system; the second
 (`results/wan-20260824.md`) measured this one, after the release path,
@@ -215,14 +214,12 @@ shares over the life of a channel, and authenticated coordinator-to-member
 calls. Channel open from a stockpiled package was measured only on the
 earlier system, as was the six-round release form it is compared against,
 which failed in the second run for a reason since fixed (`32221ba`) and has
-not been re-run.
-
-Nor has a second channel. Every per-channel cost here is measured, but a
-node running many of them is that measurement multiplied, and the scaling
-argument in [docs/batching.md](docs/batching.md) rests on refills being
-network-bound rather than compute-bound. The cost that scales worst is
-channel open, at 1.6 GB of garbling traffic per channel per signer, not the
-CPU.
+not been re-run. Nor has a second channel. Every per-channel cost here is
+measured, but a node running many of them is that measurement multiplied,
+and the scaling argument in [docs/batching.md](docs/batching.md) rests on
+refills being network-bound rather than compute-bound. The cost that scales
+worst is channel open, at 1.6 GB of garbling traffic per channel per signer,
+not the CPU.
 
 ## License
 

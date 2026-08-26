@@ -41,7 +41,6 @@ Most updates cost 0.3 s and some cost ~5 s: commitment c needs v2(c) new hash
 edges, so most need none and every 2^k-th needs k. Revealing a secret is not
 in either figure, because it no longer runs an MPC session at all (see
 docs/batching.md).
-
 A quorum change no longer needs a rebuild: prepared values are hidden under
 a replicated sharing, so the new quorum derives every summand it needs and
 the channel continues. `--restore-on-change` runs the old rebuild anyway, to

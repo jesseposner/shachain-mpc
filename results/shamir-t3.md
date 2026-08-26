@@ -17,24 +17,22 @@ first.
 
 ## Reading
 
-**The round structure is unchanged from Rep3.** One edge is about 1,645
-rounds against Rep3's 1,635, and ten edges scale linearly in both. Round
+Rep3 and Shamir have nearly the same round structure. One edge is about
+1,645 rounds against Rep3's 1,635, and ten edges scale linearly in both. Round
 count is a property of the SHA-256 circuit's depth, not of the sharing
 scheme, so the wide-area cost model and the precompute-and-buffer
 architecture carry over from t=2 without change.
 
-**Bandwidth is what t=3 costs.** One edge moves 4.1 MB per party against
-Rep3's 0.48 MB, roughly nine times as much, and the batched case moves
-414 MB for 100 edges against Rep3's 4.6 MB.
+At t=3 the cost is bandwidth. One edge moves 4.1 MB per party against Rep3's
+0.48 MB, roughly nine times as much, and the batched case moves 414 MB for
+100 edges against Rep3's 4.6 MB.
 
-**Batching still works, at a worse constant.** 100 edges cost 3,037 rounds
-against 1,645 for one, so 100 times the work for under twice the rounds.
+Batching still works, at a worse constant: 100 edges cost 3,037 rounds against
+1,645 for one, so 100 times the work for under twice the rounds.
 Rep3 does better on both counts (1,880 rounds for the same 100 edges), but
 the shape holds.
 
-**What this constrains.** t=3 is viable for a custody provider on
-data-centre links, and the round-driven latency is identical to t=2. The
-bandwidth is the planning constraint: a deep lookahead buffer costs about
-nine times what it does at t=2, so buffer depth and refill batching need
-sizing against the available link rather than against t=2's numbers. No
-such sizing analysis exists yet.
+This makes t=3 viable for a custody provider on data-centre links, with the
+same round-driven latency as t=2. A deep lookahead buffer costs about nine
+times what it does at t=2, so its depth and refill batches must be sized
+against the available link. No such sizing analysis exists yet.

@@ -70,7 +70,6 @@ exchange the architecture loses its volatile-secret-state concept entirely:
 the seed and those keys are the only secrets, everything else is public
 bookkeeping or derivable. Recovery from losing a member stops being an
 operation at all.
-
 The rebuild is still needed if enough members lose durable state at once to
 exceed the replication, which is outside the corruption model the rest of the
 design assumes.

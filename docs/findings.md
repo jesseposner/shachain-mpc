@@ -53,8 +53,8 @@ item 3 below.
 
 ## What is established, with evidence
 
-1. **Exact BOLT compatibility, end to end.** The reference implementation
-   passes the five official BOLT #3 test vectors (`scripts/ref.py selftest`).
+1. **Exact BOLT compatibility, end to end.** The plaintext reference passes
+   the five official BOLT #3 test vectors (`scripts/ref.py selftest`).
    The MPC output equals the reference byte-for-byte under six protocols,
    including the invalid-scalar branch and every lane of a vectorised hash
    (`scripts/test.sh`, 28 cases). Secrets

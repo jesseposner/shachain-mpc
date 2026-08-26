@@ -13,5 +13,4 @@ Building it forced two changes to that plan, both worth recording.
   IP, so public addressing fails on party 0. The mesh also reduces the
   cross-region firewall surface to one UDP port.
 - The lifecycle run uses the distributed PoC (`poc/member.py` on each node,
-  `poc/coordinator.py` on member 0), which did not exist when this plan was
-  written.
+  `poc/coordinator.py` on member 0), added after the original benchmark plan.

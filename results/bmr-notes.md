@@ -48,10 +48,10 @@ chain.
    what rules out garbling deep lookahead buffers, so steady-state derivation
    should stay on Rep3 in the background.
 3. MP-SPDZ's garbling phase is itself round-heavy (~1,700 rounds per edge) and
-   the rounds scale linearly when batching independent circuits, because the
-   implementation garbles program segments sequentially. The BMR protocol
+   the rounds scale linearly when batching independent circuits, because
+   MP-SPDZ garbles program segments sequentially. The BMR protocol
    itself admits low-round garbling (gates are garbled in parallel); treat
-   these garbling-side round counts as an implementation artifact; the costs
+   these garbling-side round counts as an MP-SPDZ artifact; the costs
    that bind are garbling bandwidth and compute.
 4. Correctness holds under BMR: the K in {0,1,3} chain values match the
    plaintext BOLT reference, semi-honest and malicious (see `scripts/test.sh`).
@@ -61,9 +61,8 @@ chain.
 - Steady state: Rep3 in the background with a lookahead buffer. Nothing
   cryptographic is left on the payment path: revealing a prepared secret is
   one round of plain messaging, checked against the published point, with no
-  MPC session (see docs/batching.md). An earlier version of this note put the
-  scalar conversion and opening on the hot path, which the lookahead buffer
-  removes.
+  MPC session (see docs/batching.md). The scalar conversion and opening were
+  once placed on the hot path, but the lookahead buffer removes them.
 - Channel open: pre-garbled 48-edge BMR package per expected channel,
   evaluated in two online rounds at open time; the package is consumed once
   and its storage freed.

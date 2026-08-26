@@ -28,8 +28,8 @@ Measured on loopback, malicious 3-party replicated, 10 hash edges per chain:
 | 2 chains, separate calls (10 edges each) | 20 | 32,210 |
 | 4 chains, separate calls (10 edges each) | 40 | 64,399 |
 
-The lane rows are from the corrected implementation and verified against the
-plaintext reference in every lane.
+The corrected lane rows were verified against the plaintext reference in
+every lane.
 
 Independent hashes cost nothing extra when they are issued as one
 vectorised call over a wide sharing, and cost full price when they are
@@ -68,7 +68,6 @@ naturally one uniform batch. Where a plan does mix flip positions within a
 level, as RESTORE's two walks can, group that level by flip bit and issue
 one call per group: still a small constant number of calls per level rather
 than one per hash.
-
 Flipping different bits in different lanes of a single call is also
 possible, by XOR-ing each bit position with a clear mask naming the lanes
 that flip there, but grouping by bit avoids needing it and avoids depending
@@ -173,11 +172,10 @@ Summing the levels, at this WAN's 40 ms per round:
 | 1,024 | 18,870 | 12.6 min | 1.09 | 47 | 1 per 0.74 s |
 | 4,096 | 29,833 | 19.9 min | 2.31 | 183 | 1 per 0.29 s |
 
-An earlier version of this table assumed 1,635 rounds per level whatever its
-width, which gave 11 minutes for the 1,024 row and 13 for the 4,096 one.
-Rounds grow from 1,635 at one lane to 6,766 at 2,048, so the real figures are
-12.6 and 19.9 minutes. The shape of the argument survives, and the deepest
-buffer is the one the old model flattered most.
+Assuming 1,635 rounds per level gives 11 minutes for the 1,024 row and 13 for
+the 4,096 one. But rounds grow from 1,635 at one lane to 6,766 at 2,048, so
+the measured figures are 12.6 and 19.9 minutes. The deepest buffer is the
+one the constant-round model flattered most.
 
 A revocation, not a payment: each commitment update reveals exactly one
 secret, and an isolated payment is two updates, one carrying

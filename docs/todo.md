@@ -65,7 +65,7 @@ Neither failure mode below fixes the other.
   Different quorums then reconstruct different seeds, which detonates at a
   quorum change: RESTORE re-derives a secret that no longer matches the
   published point, LDK rejects, and the counterparty holds an unrevocable
-  commitment. Entropy-from-everyone does **not** fix this; it needs
+  commitment. Entropy-from-everyone does not fix this; it needs
   commit-then-reveal or VSS.
 
 Cost is not the obstacle: `5767f2a` measured identical rounds and traffic for
@@ -86,7 +86,6 @@ escaping the working directory, and the binary is checked against a
 whitelist, which closes both code-execution paths. `--bind` allows listening on the mesh
 address rather than every interface, and the off-curve point issue is fixed.
 Caller authentication is still absent and is now stated in poc/README.md.
-
 That claim was overstated until an external audit caught it: `/step` resolved
 its writes through the check, `/setup` did not, so certificate names were
 still an arbitrary-file-write path out of the working directory. Both routes
@@ -232,8 +231,8 @@ mitigation for the denial path.
   **CONFIRMED, at three rounds rather than two.** Both cross-region runs have
   landed. A stockpiled package evaluated in 4.8 s across three continents,
   against the 54.5 minutes that run took to compute the same 48 edges
-  (`results/wan-20260823.md`, "The lifecycle: channel open from a stockpiled
-  package"), in three online rounds and 8.7 KB (`docs/findings.md`, "Channel
+  (`results/wan-20260823.md`, under the stockpiled-package lifecycle results),
+  in three online rounds and 8.7 KB (`docs/findings.md`, "Channel
   open resolved by garbled circuits").
 - **Skipped deliberately on the WAN**: `mal-rep-bin` K=48 and
   in-session BMR garbling K=48 (`wan/README.md`, "Skipped deliberately").
