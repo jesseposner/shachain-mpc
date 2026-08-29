@@ -31,24 +31,29 @@ instead of the optimized 7.
 
 The second rung is distributed zero-knowledge verification
 (Boyle-Gilboa-Ishai-Nof, CCS 2019/Asiacrypt 2020; eprint 2023/909 is the
-implementation guide) at ~1 bit per AND, behind the same trait. The
-three parties currently run in lockstep inside one process; their state
-is kept strictly separate and every AND produces the literal word each
-party sends, so the arithmetic survives the move to three processes
-unchanged.
+implementation guide) at ~1 bit per AND, behind the same trait.
 
-Measured here, counted rather than modelled:
+The three parties run as separate threads over real message channels,
+each holding only its own two PRF keys and its two wires; a party that
+aborts drops its wires and the abort cascades. A TCP transport behind
+the same `Wire` trait is what remains between this and three processes.
+Evaluation is scheduled by AND depth, one batched message round per
+level, which makes round count, the quantity a wide-area deployment
+actually pays for, a measured property:
 
-| | bits/AND/lane | per hash per party |
-|---|---:|---:|
-| semi-honest floor | 1.000 | 2.82 KB |
-| malicious, FLNW rung | 9.012 | 25.4 KB |
-| MP-SPDZ `mal-rep-bin`, measured in `results/` | ~16 | ~44 KB |
+| | bits/AND/lane | per hash per party | rounds per hash |
+|---|---:|---:|---:|
+| semi-honest floor | 1.000 | 2.82 KB | 1,607 |
+| malicious, FLNW rung | 9.012 | 25.4 KB | 1,608.6 |
+| MP-SPDZ `mal-rep-bin`, measured in `results/` | ~16 | ~44 KB | ~1,635 |
 
-The malicious figure is exact at zero triple oversupply; a sigma-40 run
-whose batch minimum forces 16% oversupply measures 10.1. Throughput is
-beside the point (43,000 semi-honest and 4,400 malicious hash-lanes/s on
-one core; derivation is network-bound in deployment), but it confirms
+The malicious rounds figure amortizes a six-round verification per
+refill batch and one view checkpoint per circuit over the hashes a batch
+serves: malicious security costs under two extra rounds per hash. The
+bits figure is exact at zero triple oversupply; a sigma-40 run whose
+batch minimum forces 16% oversupply measures 10.1. Throughput is beside
+the point (56,000 semi-honest and 4,700 malicious hash-lanes/s on three
+threads; derivation is network-bound in deployment), but it confirms
 compute is nowhere near the constraint.
 
 ## Correctness
@@ -68,11 +73,12 @@ compute is nowhere near the constraint.
 - Malicious suite (`tests/malicious.rs`): the malicious backend computes
   the same function (oracle against `sha2` and the BOLT walk), its
   traffic lands where FLNW says, and, as a property over the whole
-  protocol, one flipped bit in any multiplication or opening message,
-  wherever it lands, always surfaces as an abort or a reconstruction
-  failure. What tests cannot cover is the 2^-sigma bucket event, a
-  coordinated forgery surviving the shuffle; that rests on the paper's
-  combinatorics.
+  protocol, one flipped bit anywhere in a corrupt party's outgoing byte
+  stream, triple resharing, opening, or comparison hash, always surfaces
+  as an abort or a reconstruction failure, and the abort cascades
+  through the wires to every party. What tests cannot cover is the
+  2^-sigma bucket event, a coordinated forgery surviving the shuffle;
+  that rests on the paper's combinatorics.
 
 ## Usage
 

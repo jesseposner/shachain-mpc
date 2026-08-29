@@ -1,6 +1,6 @@
 //! Malicious security with abort: Beaver evaluation from bucket-verified
 //! triples, after Furukawa-Lindell-Nof-Weinstein (Eurocrypt 2017,
-//! eprint 2016/944).
+//! eprint 2016/944), each party running only its own side.
 //!
 //! Why this shape and not post-hoc verification of live transcripts: here
 //! the only multiplications happen on *random* triples in preprocessing,
@@ -9,31 +9,28 @@
 //! and by pairwise sacrifice inside randomly assigned buckets, where a
 //! surviving forgery needs matching errors across a shuffle the adversary
 //! cannot predict (the shuffle coin is drawn after the triples are
-//! fixed). The online phase is Beaver: linear operations plus openings,
-//! and every opening is cross-checked between parties, so the two honest
-//! parties always compare views. Every detected inconsistency is an
-//! abort; a corrupt minority can stop the computation but not skew it.
+//! fixed). The online phase is Beaver: linear operations plus openings.
+//! Openings are logged and the logs compared by hash at every
+//! checkpoint, so the two honest parties always compare views; the
+//! zero-checks compare each party's claimed third component against the
+//! copies its neighbors hold, again by hash. Every detected
+//! inconsistency is an abort; a corrupt minority can stop the
+//! computation but not skew it.
 //!
 //! Parameters follow the paper: bucket size B and a minimum batch of
 //! 2^(sigma/(B-1)) surviving triples for statistical security 2^-sigma
 //! (B=3 and 2^20 for sigma=40), plus a small opened sample. We do not
 //! claim a tighter bound than the paper proves, and we skip its
-//! bucket-cache optimization (as does MP-SPDZ's `ps-rep-bin`), paying
-//! ~9 bits per AND per party instead of the optimized 7.
-//!
-//! In-process model: the three parties run in lockstep; the view
-//! comparison after an open and the batched zero-check are direct
-//! equality checks here, standing in for the constant-size hash
-//! exchanges of a deployment. The `Cheat` hook flips one bit of one
-//! message from party 1 as received by party 0, leaving party 1's own
-//! state intact: exactly the power of a corrupt sender over one wire.
+//! bucket-cache optimization (as does MP-SPDZ's `ps-rep-bin`).
 
 use rand_chacha::ChaCha12Rng;
 use rand_core::{RngCore, SeedableRng};
+use sha2::{Digest, Sha256 as HashFn};
 
 use crate::bristol::{Circuit, Gate};
-use crate::engine::{Backend, Tapes};
-use crate::rep3::{KeySet, PairRand, ZeroShare};
+use crate::engine::{local_gate, run_parties, Backend, PartyTape, Schedule};
+use crate::net::PartyNet;
+use crate::rep3::{KeySet, PairRand, PartyKeys, ZeroShare};
 
 #[derive(Clone, Copy, Debug)]
 pub struct SecurityParams {
@@ -58,217 +55,255 @@ impl SecurityParams {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum CheatPhase {
-    /// Flip the n-th multiplication message (triple generation).
-    Mult,
-    /// Flip the n-th opening message (cut, sacrifice, or Beaver).
-    Open,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Cheat {
-    pub phase: CheatPhase,
-    pub word: usize,
-}
-
-/// One 64-lane triple: replicated share pairs per party for a, b, c.
+/// One party's share pairs of one 64-lane triple.
 #[derive(Clone, Copy)]
-struct TripleWord {
-    a: [(u64, u64); 3],
-    b: [(u64, u64); 3],
-    c: [(u64, u64); 3],
+struct PTriple {
+    a: (u64, u64),
+    b: (u64, u64),
+    c: (u64, u64),
 }
 
-pub struct MalSession {
-    words: usize,
-    zero: [ZeroShare; 3],
-    rand: [PairRand; 3],
-    coin: [PairRand; 3],
-    pool: Vec<TripleWord>,
-    pub params: SecurityParams,
-    pub cheat: Option<Cheat>,
-    pub sent_bytes: [u64; 3],
-    pub and_words_evaluated: u64,
-    mult_seen: usize,
-    open_seen: usize,
+/// One party's whole malicious state: keys, streams, verified triples,
+/// and the log of every public value it has seen since the last
+/// checkpoint.
+struct MalParty {
+    party: usize,
+    zero: ZeroShare,
+    rand: PairRand,
+    coin: PairRand,
+    pool: Vec<PTriple>,
+    log: Vec<u64>,
 }
 
-impl MalSession {
-    pub fn new(keys: &KeySet, words: usize, params: SecurityParams) -> Self {
-        assert!(params.bucket >= 2, "bucket size must be at least 2");
-        MalSession {
-            words,
-            zero: [ZeroShare::new(keys, 0), ZeroShare::new(keys, 1), ZeroShare::new(keys, 2)],
-            rand: [
-                PairRand::new(keys, 0, 1),
-                PairRand::new(keys, 1, 1),
-                PairRand::new(keys, 2, 1),
-            ],
-            coin: [
-                PairRand::new(keys, 0, 2),
-                PairRand::new(keys, 1, 2),
-                PairRand::new(keys, 2, 2),
-            ],
+impl MalParty {
+    fn new(party: usize, keys: &PartyKeys) -> Self {
+        MalParty {
+            party,
+            zero: ZeroShare::new(keys),
+            rand: PairRand::new(keys, 1),
+            coin: PairRand::new(keys, 2),
             pool: Vec::new(),
-            params,
-            cheat: None,
-            sent_bytes: [0; 3],
-            and_words_evaluated: 0,
-            mult_seen: 0,
-            open_seen: 0,
+            log: Vec::new(),
         }
     }
 
-    /// Verified triples currently in stock (words of 64 lanes each).
-    pub fn stock(&self) -> usize {
-        self.pool.len()
+    /// Open a batch: send second components to the previous party (whose
+    /// missing component they are), reconstruct, log for the view check.
+    fn open_batch(&mut self, net: &mut PartyNet, shares: &[(u64, u64)]) -> Result<Vec<u64>, String> {
+        let out: Vec<u64> = shares.iter().map(|s| s.1).collect();
+        let inb = net.reshare_prev(&out)?;
+        let vals: Vec<u64> =
+            shares.iter().zip(&inb).map(|(s, &recv)| s.0 ^ s.1 ^ recv).collect();
+        self.log.extend_from_slice(&vals);
+        Ok(vals)
     }
 
-    fn flip_if_cheating(&mut self, phase: CheatPhase, seen: usize) -> u64 {
-        match self.cheat {
-            Some(c) if c.phase == phase && c.word == seen => 1,
-            _ => 0,
-        }
-    }
-
-    /// Semi-honest multiplication of two replicated sharings: each party
-    /// resends its randomized local product to the previous party. This
-    /// is the only place a product is computed, and it only ever runs on
-    /// random inputs.
-    fn mult(&mut self, x: [(u64, u64); 3], y: [(u64, u64); 3]) -> [(u64, u64); 3] {
-        let mut r = [0u64; 3];
-        for p in 0..3 {
-            let (xi, xj) = x[p];
-            let (yi, yj) = y[p];
-            r[p] = (xi & yi) ^ (xi & yj) ^ (xj & yi) ^ self.zero[p].next();
-        }
-        let seen = self.mult_seen;
-        self.mult_seen += 1;
-        // Party 1's message to party 0 is the one the cheat hook owns:
-        // party 0 receives r_1 as its second component.
-        let flip = self.flip_if_cheating(CheatPhase::Mult, seen);
-        let mut out = [(0u64, 0u64); 3];
-        for p in 0..3 {
-            out[p] = (r[p], r[(p + 1) % 3]);
-            self.sent_bytes[p] += 8;
-        }
-        out[0].1 ^= flip;
-        out
-    }
-
-    /// Open a sharing: party i receives its missing component from party
-    /// i+1, then all parties compare the reconstructed value (the view
-    /// comparison; two of the three comparers are always honest).
-    fn open(&mut self, x: [(u64, u64); 3]) -> Result<u64, String> {
-        let seen = self.open_seen;
-        self.open_seen += 1;
-        let flip = self.flip_if_cheating(CheatPhase::Open, seen);
-        let mut v = [0u64; 3];
-        for p in 0..3 {
-            // Party p+1 sends its second component, which is comp p+2.
-            let received = x[(p + 1) % 3].1 ^ if p == 0 { flip } else { 0 };
-            v[p] = x[p].0 ^ x[p].1 ^ received;
-            self.sent_bytes[(p + 1) % 3] += 8;
-        }
-        if v[0] != v[1] || v[1] != v[2] {
+    /// Views checkpoint: every opened value was public, so all logs must
+    /// hash identically. Two of the three comparers are always honest.
+    fn view_check(&mut self, net: &mut PartyNet) -> Result<(), String> {
+        let own = hash_words(&self.log);
+        let (from_prev, from_next) = net.exchange_both(&own)?;
+        if from_prev != own || from_next != own {
             return Err("abort: opened values differ between parties".into());
         }
-        Ok(v[0])
+        self.log.clear();
+        Ok(())
     }
 
-    /// Check that a sharing is zero: party i's pair XORs to the third
-    /// component, which both other parties hold. Deployed as one batched
-    /// hash exchange; compared directly here, so it costs no counted
-    /// traffic.
-    fn check_zero(&self, w: [(u64, u64); 3]) -> Result<(), String> {
-        for p in 0..3 {
-            let claimed = w[p].0 ^ w[p].1;
-            if claimed != w[(p + 1) % 3].1 || claimed != w[(p + 2) % 3].0 {
-                return Err("abort: sacrifice check is nonzero".into());
-            }
+    /// Zero-check a batch: each party's pair must XOR to the third
+    /// component, held by both neighbors. The claimed vector travels as
+    /// a hash and is compared against the copies each neighbor stores.
+    fn check_zero_batch(&mut self, net: &mut PartyNet, ws: &[(u64, u64)]) -> Result<(), String> {
+        let claimed: Vec<u64> = ws.iter().map(|w| w.0 ^ w.1).collect();
+        let firsts: Vec<u64> = ws.iter().map(|w| w.0).collect();
+        let seconds: Vec<u64> = ws.iter().map(|w| w.1).collect();
+        let (from_prev, from_next) = net.exchange_both(&hash_words(&claimed))?;
+        // The previous party's claim names our second component's vector;
+        // the next party's claim names our first's.
+        if from_prev != hash_words(&seconds) || from_next != hash_words(&firsts) {
+            return Err("abort: sacrifice check is nonzero".into());
         }
         Ok(())
     }
 
     /// A public coin no party could predict before the triples were
-    /// fixed: the XOR of all three PRSS streams, opened. The adversary
-    /// holds two of the three keys, so the third stream blinds it.
-    fn draw_coin_seed(&mut self) -> [u8; 32] {
+    /// fixed: an opened PRSS random. The adversary misses one of the
+    /// three key streams, which blinds it until the opening.
+    fn draw_coin_seed(&mut self, net: &mut PartyNet) -> Result<[u8; 32], String> {
+        let shares: Vec<(u64, u64)> = (0..4).map(|_| self.coin.next()).collect();
+        let vals = self.open_batch(net, &shares)?;
         let mut seed = [0u8; 32];
-        for chunk in seed.chunks_mut(8) {
-            let p0 = self.coin[0].next();
-            let p1 = self.coin[1].next();
-            let _ = self.coin[2].next();
-            // r0 ^ r1 ^ r2: party 0 holds (r0, r1), party 1 holds (r1, r2).
-            let word = p0.0 ^ p0.1 ^ p1.1;
-            chunk.copy_from_slice(&word.to_le_bytes());
-            for p in 0..3 {
-                self.sent_bytes[p] += 8;
-            }
+        for (chunk, v) in seed.chunks_mut(8).zip(&vals) {
+            chunk.copy_from_slice(&v.to_le_bytes());
         }
-        seed
-    }
-
-    /// Verify that t1's product is correct using t2, consuming t2.
-    /// With rho = a1^a2 and sigma = b1^b2 opened,
-    /// c1 ^ c2 ^ sigma&a2 ^ rho&b2 ^ rho&sigma = e1 ^ e2, the XOR of the
-    /// two triples' errors: zero iff the errors match, and the shuffle
-    /// makes matching errors across a bucket a 2^-sigma event.
-    fn sacrifice(&mut self, t1: &TripleWord, t2: &TripleWord) -> Result<(), String> {
-        let rho = self.open(xor3(t1.a, t2.a))?;
-        let sigma = self.open(xor3(t1.b, t2.b))?;
-        let mut w = xor3(t1.c, t2.c);
-        w = xor3(w, and_public(sigma, t2.a));
-        w = xor3(w, and_public(rho, t2.b));
-        w = xor_public(w, rho & sigma);
-        self.check_zero(w)
+        Ok(seed)
     }
 
     /// Generate, cut, shuffle, bucket, sacrifice: `target` verified
-    /// triples out, `target * bucket + opened` generated.
-    fn refill(&mut self, target: usize) -> Result<(), String> {
-        let gen = target * self.params.bucket + self.params.opened;
+    /// triples in, `target * bucket + opened` generated. Six rounds
+    /// regardless of size.
+    fn refill(&mut self, net: &mut PartyNet, target: usize, params: &SecurityParams) -> Result<(), String> {
+        let gen = target * params.bucket + params.opened;
         let mut trips = Vec::with_capacity(gen);
+        let mut out = Vec::with_capacity(gen);
         for _ in 0..gen {
-            let a = [self.rand[0].next(), self.rand[1].next(), self.rand[2].next()];
-            let b = [self.rand[0].next(), self.rand[1].next(), self.rand[2].next()];
-            let c = self.mult(a, b);
-            trips.push(TripleWord { a, b, c });
+            let a = self.rand.next();
+            let b = self.rand.next();
+            let r = (a.0 & b.0) ^ (a.0 & b.1) ^ (a.1 & b.0) ^ self.zero.next();
+            out.push(r);
+            trips.push(PTriple { a, b, c: (r, 0) });
+        }
+        let inb = net.reshare_prev(&out)?;
+        for (t, &recv) in trips.iter_mut().zip(&inb) {
+            t.c.1 = recv;
         }
 
-        // The coin is drawn only now, after every triple message is sent.
-        let mut shuffle_rng = ChaCha12Rng::from_seed(self.draw_coin_seed());
+        // The coin comes only now, after every triple message is sent,
+        // and the shuffle it seeds is computed identically everywhere.
+        let mut shuffle_rng = ChaCha12Rng::from_seed(self.draw_coin_seed(net)?);
         for i in (1..trips.len()).rev() {
             let j = (shuffle_rng.next_u64() % (i as u64 + 1)) as usize;
             trips.swap(i, j);
         }
 
         // The cut: open a sample completely and check c = a & b.
-        for t in trips.iter().take(self.params.opened) {
-            let a = self.open(t.a)?;
-            let b = self.open(t.b)?;
-            let c = self.open(t.c)?;
-            if c != a & b {
+        let mut cut_shares = Vec::with_capacity(3 * params.opened);
+        for t in trips.iter().take(params.opened) {
+            cut_shares.extend_from_slice(&[t.a, t.b, t.c]);
+        }
+        let vals = self.open_batch(net, &cut_shares)?;
+        for abc in vals.chunks_exact(3) {
+            if abc[2] != abc[0] & abc[1] {
                 return Err("abort: opened triple is wrong".into());
             }
         }
 
-        for bucket in trips[self.params.opened..].chunks_exact(self.params.bucket) {
+        // Sacrifice, batched across every bucket: open rho = a1^a2 and
+        // sigma = b1^b2 per (head, partner) pair, then zero-check
+        // c1 ^ c2 ^ sigma&a2 ^ rho&b2 ^ rho&sigma, which equals the XOR
+        // of the two triples' errors.
+        let buckets: Vec<&[PTriple]> =
+            trips[params.opened..].chunks_exact(params.bucket).collect();
+        let mut pair_shares = Vec::new();
+        for bucket in &buckets {
             for partner in &bucket[1..] {
-                self.sacrifice(&bucket[0], partner)?;
+                pair_shares.push(xor2(bucket[0].a, partner.a));
+                pair_shares.push(xor2(bucket[0].b, partner.b));
             }
-            self.pool.push(bucket[0]);
         }
+        let opened = self.open_batch(net, &pair_shares)?;
+        let mut ws = Vec::with_capacity(opened.len() / 2);
+        let mut k = 0;
+        for bucket in &buckets {
+            for partner in &bucket[1..] {
+                let (rho, sigma) = (opened[k], opened[k + 1]);
+                k += 2;
+                let mut w = xor2(bucket[0].c, partner.c);
+                w = xor2(w, and_public(sigma, partner.a));
+                w = xor2(w, and_public(rho, partner.b));
+                w = xor_public(w, rho & sigma, self.party);
+                ws.push(w);
+            }
+        }
+        self.check_zero_batch(net, &ws)?;
+        self.view_check(net)?;
+        let survivors: Vec<PTriple> = buckets.iter().map(|b| b[0]).collect();
+        self.pool.extend(survivors);
         Ok(())
     }
 
-    fn ensure(&mut self, needed: usize) -> Result<(), String> {
-        while self.pool.len() < needed {
-            let deficit = needed - self.pool.len();
-            self.refill(deficit.max(self.params.min_batch()))?;
+    /// Beaver evaluation of one circuit: per level, one batched opening
+    /// of d = x^a and e = y^b, then linear work; a views checkpoint at
+    /// the end. Everything a cheater can do lands in an opening or a
+    /// hash, and both are compared.
+    fn eval_circuit(
+        &mut self,
+        net: &mut PartyNet,
+        c: &Circuit,
+        s: &Schedule,
+        t: &mut PartyTape,
+        params: &SecurityParams,
+    ) -> Result<(), String> {
+        let words = t.words;
+        let need = c.n_and * words;
+        while self.pool.len() < need {
+            let deficit = need - self.pool.len();
+            self.refill(net, deficit.max(params.min_batch()), params)?;
         }
-        Ok(())
+        for phase in 0..=s.depth {
+            for &gi in &s.locals[phase] {
+                local_gate(self.party, c.gates[gi], t);
+            }
+            let ands = &s.ands[phase];
+            if ands.is_empty() {
+                continue;
+            }
+            let mut trips = Vec::with_capacity(ands.len() * words);
+            let mut de_shares = Vec::with_capacity(2 * ands.len() * words);
+            for &gi in ands {
+                let Gate::And(x, y, _) = c.gates[gi] else { unreachable!() };
+                let (xw, yw) = (x as usize * words, y as usize * words);
+                for w in 0..words {
+                    let trip = self.pool.pop().expect("ensured above");
+                    de_shares.push(xor2((t.c[0][xw + w], t.c[1][xw + w]), trip.a));
+                    de_shares.push(xor2((t.c[0][yw + w], t.c[1][yw + w]), trip.b));
+                    trips.push(trip);
+                }
+            }
+            let opened = self.open_batch(net, &de_shares)?;
+            let mut k = 0;
+            for &gi in ands {
+                let Gate::And(_, _, o) = c.gates[gi] else { unreachable!() };
+                let ow = o as usize * words;
+                for w in 0..words {
+                    let trip = trips[k / 2];
+                    let (d, e) = (opened[k], opened[k + 1]);
+                    k += 2;
+                    let mut z = trip.c;
+                    z = xor2(z, and_public(d, trip.b));
+                    z = xor2(z, and_public(e, trip.a));
+                    z = xor_public(z, d & e, self.party);
+                    t.c[0][ow + w] = z.0;
+                    t.c[1][ow + w] = z.1;
+                }
+            }
+        }
+        self.view_check(net)
+    }
+}
+
+pub struct MalSession {
+    words: usize,
+    parties: Option<[MalParty; 3]>,
+    pub params: SecurityParams,
+    /// Bit index into party 1's outgoing byte stream to flip in transit:
+    /// the full power of a corrupt sender over one bit, anywhere.
+    pub cheat_bit: Option<u64>,
+    pub sent_bytes: [u64; 3],
+    pub rounds: u64,
+}
+
+impl MalSession {
+    pub fn new(keys: &KeySet, words: usize, params: SecurityParams) -> Self {
+        assert!(params.bucket >= 2, "bucket size must be at least 2");
+        let parties = [
+            MalParty::new(0, &keys.party(0)),
+            MalParty::new(1, &keys.party(1)),
+            MalParty::new(2, &keys.party(2)),
+        ];
+        MalSession {
+            words,
+            parties: Some(parties),
+            params,
+            cheat_bit: None,
+            sent_bytes: [0; 3],
+            rounds: 0,
+        }
+    }
+
+    /// Verified triples currently in stock (words of 64 lanes each).
+    pub fn stock(&self) -> usize {
+        self.parties.as_ref().expect("state present")[0].pool.len()
     }
 }
 
@@ -277,98 +312,54 @@ impl Backend for MalSession {
         self.words
     }
 
-    /// Beaver evaluation: AND gates consume one verified triple per word
-    /// and open d = x^a, e = y^b; everything else is local and linear, so
-    /// a corrupt party's only remaining moves are bad openings, caught by
-    /// the view comparison, and bad shares of its own inputs, which the
-    /// replicated cross-check at reconstruction catches.
-    fn eval(&mut self, circuit: &Circuit, t: &mut Tapes) -> Result<(), String> {
-        assert_eq!(self.words, t.words);
-        let words = self.words;
-        self.ensure(circuit.n_and * words)?;
-        for gate in &circuit.gates {
-            match *gate {
-                Gate::Xor(x, y, o) => {
-                    let (xw, yw, ow) =
-                        (x as usize * words, y as usize * words, o as usize * words);
-                    for p in 0..3 {
-                        for comp in 0..2 {
-                            for w in 0..words {
-                                let tape = &mut t.c[p][comp];
-                                tape[ow + w] = tape[xw + w] ^ tape[yw + w];
-                            }
-                        }
-                    }
-                }
-                Gate::Inv(x, o) => {
-                    let (xw, ow) = (x as usize * words, o as usize * words);
-                    for p in 0..3 {
-                        for comp in 0..2 {
-                            for w in 0..words {
-                                let tape = &mut t.c[p][comp];
-                                tape[ow + w] = tape[xw + w];
-                            }
-                        }
-                    }
-                    for w in 0..words {
-                        t.c[0][0][ow + w] ^= !0;
-                        t.c[2][1][ow + w] ^= !0;
-                    }
-                }
-                Gate::And(x, y, o) => {
-                    let (xw, yw, ow) =
-                        (x as usize * words, y as usize * words, o as usize * words);
-                    for w in 0..words {
-                        let trip = self.pool.pop().expect("ensured above");
-                        let xs = read(t, xw + w);
-                        let ys = read(t, yw + w);
-                        let d = self.open(xor3(xs, trip.a))?;
-                        let e = self.open(xor3(ys, trip.b))?;
-                        let mut z = trip.c;
-                        z = xor3(z, and_public(d, trip.b));
-                        z = xor3(z, and_public(e, trip.a));
-                        z = xor_public(z, d & e);
-                        for p in 0..3 {
-                            t.c[p][0][ow + w] = z[p].0;
-                            t.c[p][1][ow + w] = z[p].1;
-                        }
-                        self.and_words_evaluated += 1;
-                    }
-                }
-            }
+    fn eval(
+        &mut self,
+        circuit: &Circuit,
+        sched: &Schedule,
+        tapes: &mut [PartyTape; 3],
+    ) -> Result<(), String> {
+        let mut parties = self.parties.take().expect("state present");
+        let [p0, p1, p2] = &mut parties;
+        let [t0, t1, t2] = tapes;
+        let mut states = [(p0, t0), (p1, t1), (p2, t2)];
+        let params = self.params;
+        let result = run_parties(&mut states, self.cheat_bit, |_, (mp, tape), net| {
+            mp.eval_circuit(net, circuit, sched, tape, &params)
+        });
+        self.parties = Some(parties);
+        let (sent, rounds) = result?;
+        for p in 0..3 {
+            self.sent_bytes[p] += sent[p];
         }
+        self.rounds += rounds;
         Ok(())
     }
 }
 
-fn read(t: &Tapes, idx: usize) -> [(u64, u64); 3] {
-    [
-        (t.c[0][0][idx], t.c[0][1][idx]),
-        (t.c[1][0][idx], t.c[1][1][idx]),
-        (t.c[2][0][idx], t.c[2][1][idx]),
-    ]
+fn xor2(x: (u64, u64), y: (u64, u64)) -> (u64, u64) {
+    (x.0 ^ y.0, x.1 ^ y.1)
 }
 
-fn xor3(x: [(u64, u64); 3], y: [(u64, u64); 3]) -> [(u64, u64); 3] {
-    [
-        (x[0].0 ^ y[0].0, x[0].1 ^ y[0].1),
-        (x[1].0 ^ y[1].0, x[1].1 ^ y[1].1),
-        (x[2].0 ^ y[2].0, x[2].1 ^ y[2].1),
-    ]
-}
-
-fn and_public(mask: u64, x: [(u64, u64); 3]) -> [(u64, u64); 3] {
-    [
-        (mask & x[0].0, mask & x[0].1),
-        (mask & x[1].0, mask & x[1].1),
-        (mask & x[2].0, mask & x[2].1),
-    ]
+fn and_public(mask: u64, x: (u64, u64)) -> (u64, u64) {
+    (mask & x.0, mask & x.1)
 }
 
 /// XOR a public word into the sharing: component x0, held by parties
-/// 0 and 2.
-fn xor_public(mut x: [(u64, u64); 3], v: u64) -> [(u64, u64); 3] {
-    x[0].0 ^= v;
-    x[2].1 ^= v;
+/// 0 (first component) and 2 (second).
+fn xor_public(mut x: (u64, u64), v: u64, party: usize) -> (u64, u64) {
+    if party == 0 {
+        x.0 ^= v;
+    }
+    if party == 2 {
+        x.1 ^= v;
+    }
     x
+}
+
+fn hash_words(words: &[u64]) -> Vec<u64> {
+    let mut h = HashFn::new();
+    for w in words {
+        h.update(w.to_le_bytes());
+    }
+    h.finalize()[..].chunks_exact(8).map(|c| u64::from_le_bytes(c.try_into().unwrap())).collect()
 }

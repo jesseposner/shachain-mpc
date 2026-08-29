@@ -29,15 +29,20 @@ fn main() {
     let shared = share_lanes(&seeds, &mut rng);
 
     let t0 = Instant::now();
-    let (sent, stock, label) = if malicious {
+    let (sent, rounds, stock, label) = if malicious {
         let params = SecurityParams::default();
         let mut session = MalSession::new(&keys, shared.words, params);
         walk_edges(&sha, &mut session, &shared, k).expect("honest run aborted");
-        (session.sent_bytes[0], session.stock(), format!("malicious (FLNW, sigma {})", params.sigma))
+        (
+            session.sent_bytes[0],
+            session.rounds,
+            session.stock(),
+            format!("malicious (FLNW, sigma {})", params.sigma),
+        )
     } else {
         let mut session = Session::new(&keys, shared.words);
         walk_edges(&sha, &mut session, &shared, k).expect("semi-honest never aborts");
-        (session.sent_bytes[0], 0, "semi-honest".into())
+        (session.sent_bytes[0], session.rounds, 0, "semi-honest".into())
     };
     let dt = t0.elapsed();
 
@@ -45,6 +50,10 @@ fn main() {
     let and_instances = (sha.circuit.n_and * k * 64 * shared.words) as f64;
     println!("{label}: edges {k}, lanes {n} ({} words), AND gates/hash {}", shared.words, sha.circuit.n_and);
     println!("wall {:.3} s, {:.0} hash-lanes/s", dt.as_secs_f64(), hashes / dt.as_secs_f64());
+    println!(
+        "{rounds} message rounds total, {:.1} per hash (circuit AND depth: what a WAN pays)",
+        rounds as f64 / k as f64
+    );
     println!(
         "sent per party {:.2} MB, {:.3} bits/AND/lane over the run",
         sent as f64 / 1e6,

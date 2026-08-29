@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use rand_core::RngCore;
 
 use crate::bristol::Circuit;
-use crate::engine::{Backend, Tapes};
+use crate::engine::{Backend, PartyTape, Schedule};
 use crate::rep3::{reconstruct_word, share_word};
 
 pub const IV: [u8; 32] = [
@@ -92,6 +92,7 @@ pub fn reconstruct_lanes(x: &Shared256, n: usize) -> Result<Vec<[u8; 32]>, Strin
 
 pub struct Sha256 {
     pub circuit: Circuit,
+    pub sched: Schedule,
 }
 
 impl Sha256 {
@@ -112,7 +113,8 @@ impl Sha256 {
                 if circuit.inputs != [512, 256] || circuit.outputs != [256] {
                     return Err(format!("{}: unexpected circuit shape", path.display()));
                 }
-                return Ok(Sha256 { circuit });
+                let sched = Schedule::new(&circuit);
+                return Ok(Sha256 { circuit, sched });
             }
         }
         Err("sha256.txt not found; set MPSPDZ to an MP-SPDZ checkout".into())
@@ -125,7 +127,11 @@ impl Sha256 {
     pub fn hash32(&self, s: &mut impl Backend, msg: &Shared256) -> Result<Shared256, String> {
         assert_eq!(s.words(), msg.words);
         let words = msg.words;
-        let mut t = Tapes::new(self.circuit.n_wires, words);
+        let mut tapes = [
+            PartyTape::new(self.circuit.n_wires, words),
+            PartyTape::new(self.circuit.n_wires, words),
+            PartyTape::new(self.circuit.n_wires, words),
+        ];
 
         // Input 0: the padded block. Message bytes 0..32 come from the
         // shares; bytes 32..64 are the fixed padding for a 256-bit
@@ -139,17 +145,18 @@ impl Sha256 {
                 let wire = block0 + 8 * (63 - k) + bit;
                 if k < 32 {
                     let m = 8 * k + bit;
-                    for p in 0..3 {
+                    for (p, tape) in tapes.iter_mut().enumerate() {
                         for comp in 0..2 {
-                            let (src, dst) = (&msg.c[p][comp], &mut t.c[p][comp]);
-                            dst[wire * words..(wire + 1) * words]
-                                .copy_from_slice(&src[m * words..(m + 1) * words]);
+                            tape.c[comp][wire * words..(wire + 1) * words]
+                                .copy_from_slice(&msg.c[p][comp][m * words..(m + 1) * words]);
                         }
                     }
                 } else {
                     let v = if (pad[k] >> bit) & 1 == 1 { !0u64 } else { 0 };
-                    for w in 0..words {
-                        t.set_public(wire, w, v);
+                    for (p, tape) in tapes.iter_mut().enumerate() {
+                        for w in 0..words {
+                            tape.set_public(p, wire, w, v);
+                        }
                     }
                 }
             }
@@ -161,13 +168,15 @@ impl Sha256 {
             for bit in 0..8 {
                 let wire = state0 + 8 * (31 - k) + bit;
                 let v = if (IV[k] >> bit) & 1 == 1 { !0u64 } else { 0 };
-                for w in 0..words {
-                    t.set_public(wire, w, v);
+                for (p, tape) in tapes.iter_mut().enumerate() {
+                    for w in 0..words {
+                        tape.set_public(p, wire, w, v);
+                    }
                 }
             }
         }
 
-        s.eval(&self.circuit, &mut t)?;
+        s.eval(&self.circuit, &self.sched, &mut tapes)?;
 
         let out0 = self.circuit.output_offset(0);
         let mut digest = Shared256::zero(words);
@@ -175,11 +184,10 @@ impl Sha256 {
             for bit in 0..8 {
                 let wire = out0 + 8 * (31 - k) + bit;
                 let m = 8 * k + bit;
-                for p in 0..3 {
+                for (p, tape) in tapes.iter().enumerate() {
                     for comp in 0..2 {
-                        let (src, dst) = (&t.c[p][comp], &mut digest.c[p][comp]);
-                        dst[m * words..(m + 1) * words]
-                            .copy_from_slice(&src[wire * words..(wire + 1) * words]);
+                        digest.c[p][comp][m * words..(m + 1) * words]
+                            .copy_from_slice(&tape.c[comp][wire * words..(wire + 1) * words]);
                     }
                 }
             }

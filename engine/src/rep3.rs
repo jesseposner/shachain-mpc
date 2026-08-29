@@ -11,9 +11,10 @@
 use rand_chacha::ChaCha12Rng;
 use rand_core::{RngCore, SeedableRng};
 
-/// The three pairwise PRF keys. In production each key is derived
-/// pairwise (Iceberg-style, per docs/key-material.md); for tests all
-/// three come from one master seed.
+/// The three pairwise PRF keys, as a dealer or test harness sees them.
+/// In production each key is derived pairwise (Iceberg-style, per
+/// docs/key-material.md) and no single party ever holds all three; a
+/// party receives only its `PartyKeys`.
 pub struct KeySet(pub [[u8; 32]; 3]);
 
 impl KeySet {
@@ -25,6 +26,18 @@ impl KeySet {
         }
         KeySet(keys)
     }
+
+    /// The two keys party i legitimately holds: key i (shared with the
+    /// next party) and key i-1 (shared with the previous).
+    pub fn party(&self, i: usize) -> PartyKeys {
+        PartyKeys { own: self.0[i], prev: self.0[(i + 2) % 3] }
+    }
+}
+
+#[derive(Clone)]
+pub struct PartyKeys {
+    pub own: [u8; 32],
+    pub prev: [u8; 32],
 }
 
 /// Party i's view of the correlated randomness.
@@ -34,11 +47,8 @@ pub struct ZeroShare {
 }
 
 impl ZeroShare {
-    pub fn new(keys: &KeySet, party: usize) -> Self {
-        ZeroShare {
-            own: stream(keys, party, 0),
-            prev: stream(keys, (party + 2) % 3, 0),
-        }
+    pub fn new(keys: &PartyKeys) -> Self {
+        ZeroShare { own: stream(&keys.own, 0), prev: stream(&keys.prev, 0) }
     }
 
     /// Next zero-share word. All parties must draw in lockstep.
@@ -59,11 +69,8 @@ impl PairRand {
     /// `stream_id` separates independent uses of the same keys (random
     /// triple inputs, public coins); every use of an id must draw in
     /// lockstep across the parties.
-    pub fn new(keys: &KeySet, party: usize, stream_id: u64) -> Self {
-        PairRand {
-            prev: stream(keys, (party + 2) % 3, stream_id),
-            own: stream(keys, party, stream_id),
-        }
+    pub fn new(keys: &PartyKeys, stream_id: u64) -> Self {
+        PairRand { prev: stream(&keys.prev, stream_id), own: stream(&keys.own, stream_id) }
     }
 
     /// Next share pair (r_i, r_{i+1}).
@@ -72,8 +79,8 @@ impl PairRand {
     }
 }
 
-fn stream(keys: &KeySet, key: usize, stream_id: u64) -> ChaCha12Rng {
-    let mut rng = ChaCha12Rng::from_seed(keys.0[key]);
+fn stream(key: &[u8; 32], stream_id: u64) -> ChaCha12Rng {
+    let mut rng = ChaCha12Rng::from_seed(*key);
     rng.set_stream(stream_id);
     rng
 }
