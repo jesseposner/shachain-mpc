@@ -1,0 +1,17 @@
+[package]
+name = "shachain-engine"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+rand_chacha = "0.3"
+rand_core = "0.6"
+
+[dev-dependencies]
+sha2 = "0.10"
+hex = "0.4"
+proptest = "1.11.0"
+
+[profile.test]
+opt-level = 2

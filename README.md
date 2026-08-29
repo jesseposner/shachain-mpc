@@ -160,6 +160,7 @@ scripts/test.sh                the correctness suite
 scripts/bench.sh               benchmark table -> results/<host>-<date>.md
 scripts/ldk_check.sh           MPC secrets -> LDK verifier; point-export harness
 ldk-check/                     Rust harness and the live counterparty process
+engine/                        hand-rolled Rep3 in Rust: semi-honest core, BOLT-exact
 wan/                           cross-region run: staging, launch, mesh, teardown
 patches/                       MP-SPDZ fixes: clang 21, BMR phase timing, package persistence
 experiments/                   optimisations that did not work, with their numbers

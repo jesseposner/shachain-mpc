@@ -1,0 +1,46 @@
+//! K edges, N lanes: wall clock and per-party traffic.
+//!
+//! Usage: bench [K] [N]   (defaults: 10 edges, 64 lanes)
+
+use std::time::Instant;
+
+use rand_chacha::ChaCha12Rng;
+use rand_core::{RngCore, SeedableRng};
+
+use shachain_engine::engine::Session;
+use shachain_engine::rep3::KeySet;
+use shachain_engine::sha256::{share_lanes, Sha256};
+use shachain_engine::shachain::walk_edges;
+
+fn main() {
+    let mut args = std::env::args().skip(1);
+    let k: usize = args.next().map_or(10, |a| a.parse().expect("K"));
+    let n: usize = args.next().map_or(64, |a| a.parse().expect("N"));
+
+    let sha = Sha256::load().expect("circuit");
+    let keys = KeySet::from_seed([7u8; 32]);
+    let mut rng = ChaCha12Rng::from_seed([9u8; 32]);
+    let mut seeds = vec![[0u8; 32]; n];
+    for s in &mut seeds {
+        rng.fill_bytes(s);
+    }
+
+    let shared = share_lanes(&seeds, &mut rng);
+    let mut session = Session::new(&keys, shared.words);
+
+    let t0 = Instant::now();
+    let _ = walk_edges(&sha, &mut session, &shared, k);
+    let dt = t0.elapsed();
+
+    let hashes = (k * n) as f64;
+    let sent = session.sent_bytes[0];
+    let per_hash_bits = sent as f64 * 8.0 / hashes;
+    println!("edges {k}, lanes {n} ({} words), AND gates/hash {}", shared.words, sha.circuit.n_and);
+    println!("wall {:.3} s, {:.0} hash-lanes/s", dt.as_secs_f64(), hashes / dt.as_secs_f64());
+    println!(
+        "sent per party {:.2} MB total, {:.0} bits/hash-lane = {:.3} bits/AND/lane",
+        sent as f64 / 1e6,
+        per_hash_bits,
+        per_hash_bits / sha.circuit.n_and as f64
+    );
+}
