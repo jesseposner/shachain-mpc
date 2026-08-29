@@ -36,8 +36,8 @@ pub struct ZeroShare {
 impl ZeroShare {
     pub fn new(keys: &KeySet, party: usize) -> Self {
         ZeroShare {
-            own: ChaCha12Rng::from_seed(keys.0[party]),
-            prev: ChaCha12Rng::from_seed(keys.0[(party + 2) % 3]),
+            own: stream(keys, party, 0),
+            prev: stream(keys, (party + 2) % 3, 0),
         }
     }
 
@@ -45,6 +45,37 @@ impl ZeroShare {
     pub fn next(&mut self) -> u64 {
         self.own.next_u64() ^ self.prev.next_u64()
     }
+}
+
+/// Party i's view of a random replicated sharing (PRSS): component r_j
+/// is the stream of key j-1, so party i, holding keys i-1 and i, derives
+/// exactly its pair (r_i, r_{i+1}) with no communication.
+pub struct PairRand {
+    prev: ChaCha12Rng,
+    own: ChaCha12Rng,
+}
+
+impl PairRand {
+    /// `stream_id` separates independent uses of the same keys (random
+    /// triple inputs, public coins); every use of an id must draw in
+    /// lockstep across the parties.
+    pub fn new(keys: &KeySet, party: usize, stream_id: u64) -> Self {
+        PairRand {
+            prev: stream(keys, (party + 2) % 3, stream_id),
+            own: stream(keys, party, stream_id),
+        }
+    }
+
+    /// Next share pair (r_i, r_{i+1}).
+    pub fn next(&mut self) -> (u64, u64) {
+        (self.prev.next_u64(), self.own.next_u64())
+    }
+}
+
+fn stream(keys: &KeySet, key: usize, stream_id: u64) -> ChaCha12Rng {
+    let mut rng = ChaCha12Rng::from_seed(keys.0[key]);
+    rng.set_stream(stream_id);
+    rng
 }
 
 /// Split one word into replicated shares: [(x0,x1), (x1,x2), (x2,x0)].

@@ -11,6 +11,7 @@
 
 pub mod bristol;
 pub mod engine;
+pub mod mal;
 pub mod rep3;
 pub mod sha256;
 pub mod shachain;

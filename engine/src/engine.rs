@@ -34,6 +34,14 @@ impl Tapes {
     }
 }
 
+/// A circuit evaluation backend. `Session` is the semi-honest floor;
+/// `mal::MalSession` runs the same circuits with malicious security and
+/// aborts on any detected cheat.
+pub trait Backend {
+    fn words(&self) -> usize;
+    fn eval(&mut self, circuit: &Circuit, t: &mut Tapes) -> Result<(), String>;
+}
+
 /// One party's ongoing protocol state plus traffic counters, shared
 /// across every circuit evaluated under the same key material.
 pub struct Session {
@@ -51,7 +59,7 @@ impl Session {
         }
     }
 
-    pub fn eval(&mut self, circuit: &Circuit, t: &mut Tapes) {
+    fn eval_gates(&mut self, circuit: &Circuit, t: &mut Tapes) {
         assert_eq!(self.words, t.words);
         let words = self.words;
         for gate in &circuit.gates {
@@ -108,5 +116,16 @@ impl Session {
                 }
             }
         }
+    }
+}
+
+impl Backend for Session {
+    fn words(&self) -> usize {
+        self.words
+    }
+
+    fn eval(&mut self, circuit: &Circuit, t: &mut Tapes) -> Result<(), String> {
+        self.eval_gates(circuit, t);
+        Ok(())
     }
 }

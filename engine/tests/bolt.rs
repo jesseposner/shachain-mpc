@@ -65,7 +65,7 @@ fn compress_matches_sha2_in_every_lane() {
     }
     let shared = share_lanes(&msgs, &mut rng);
     let mut session = Session::new(&keys, shared.words);
-    let digest = sha.hash32(&mut session, &shared);
+    let digest = sha.hash32(&mut session, &shared).unwrap();
     let lanes = reconstruct_lanes(&digest, 64).unwrap();
     for (lane, msg) in lanes.iter().zip(&msgs) {
         assert_eq!(lane[..], RefSha256::digest(msg)[..]);
@@ -78,7 +78,7 @@ fn official_bolt_vectors() {
     for (seed_hex, index, expected) in BOLT_VECTORS {
         let shared = share_lanes(&[seed32(seed_hex)], &mut rng);
         let mut session = Session::new(&keys, shared.words);
-        let out = generate_from_seed(&sha, &mut session, &shared, index);
+        let out = generate_from_seed(&sha, &mut session, &shared, index).unwrap();
         let lanes = reconstruct_lanes(&out, 1).unwrap();
         assert_eq!(hex::encode(lanes[0]), expected, "index {index:#x}");
     }
@@ -96,7 +96,7 @@ fn distinct_seeds_walk_distinct() {
     }
     let shared = share_lanes(&seeds, &mut rng);
     let mut session = Session::new(&keys, shared.words);
-    let out = generate_from_seed(&sha, &mut session, &shared, index);
+    let out = generate_from_seed(&sha, &mut session, &shared, index).unwrap();
     let lanes = reconstruct_lanes(&out, 3).unwrap();
     for (lane, seed) in lanes.iter().zip(&seeds) {
         let mut x = *seed;
@@ -125,7 +125,7 @@ fn one_bit_per_and_per_party() {
     let (sha, keys, mut rng) = setup();
     let shared = share_lanes(&vec![[3u8; 32]; 64], &mut rng);
     let mut session = Session::new(&keys, shared.words);
-    let _ = sha.hash32(&mut session, &shared);
+    sha.hash32(&mut session, &shared).unwrap();
     let expected_bytes = (sha.circuit.n_and * shared.words * 8) as u64;
     assert_eq!(session.sent_bytes, [expected_bytes; 3]);
     let bits_per_and_per_lane = expected_bytes as f64 * 8.0 / (sha.circuit.n_and * 64) as f64;

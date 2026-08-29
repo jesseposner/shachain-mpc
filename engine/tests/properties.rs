@@ -37,7 +37,7 @@ fn run_hashes(lanes: &[[u8; 32]], dealer_seed: [u8; 32]) -> Vec<[u8; 32]> {
     let mut rng = ChaCha12Rng::from_seed(dealer_seed);
     let shared = share_lanes(lanes, &mut rng);
     let mut session = Session::new(&keys, shared.words);
-    let digest = sha.hash32(&mut session, &shared);
+    let digest = sha.hash32(&mut session, &shared).unwrap();
     reconstruct_lanes(&digest, lanes.len()).unwrap()
 }
 
@@ -78,7 +78,7 @@ proptest! {
         let mut rng = ChaCha12Rng::from_seed(dealer);
         let shared = share_lanes(&seeds, &mut rng);
         let mut session = Session::new(&keys, shared.words);
-        let out = generate_from_seed(&sha, &mut session, &shared, index);
+        let out = generate_from_seed(&sha, &mut session, &shared, index).unwrap();
         let lanes = reconstruct_lanes(&out, seeds.len()).unwrap();
         for (got, seed) in lanes.iter().zip(&seeds) {
             prop_assert_eq!(*got, ref_generate(*seed, index));

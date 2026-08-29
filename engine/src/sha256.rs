@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use rand_core::RngCore;
 
 use crate::bristol::Circuit;
-use crate::engine::{Session, Tapes};
+use crate::engine::{Backend, Tapes};
 use crate::rep3::{reconstruct_word, share_word};
 
 pub const IV: [u8; 32] = [
@@ -120,8 +120,10 @@ impl Sha256 {
 
     /// One shachain edge's hash: SHA-256 of a 32-byte shared message.
     /// Padding and IV are public; the message shares are the only secret
-    /// input, so an edge costs exactly the circuit's 22,573 ANDs.
-    pub fn hash32(&self, s: &mut Session, msg: &Shared256) -> Shared256 {
+    /// input, so an edge costs exactly the circuit's 22,573 ANDs. Under
+    /// a malicious backend, Err is an abort.
+    pub fn hash32(&self, s: &mut impl Backend, msg: &Shared256) -> Result<Shared256, String> {
+        assert_eq!(s.words(), msg.words);
         let words = msg.words;
         let mut t = Tapes::new(self.circuit.n_wires, words);
 
@@ -165,7 +167,7 @@ impl Sha256 {
             }
         }
 
-        s.eval(&self.circuit, &mut t);
+        s.eval(&self.circuit, &mut t)?;
 
         let out0 = self.circuit.output_offset(0);
         let mut digest = Shared256::zero(words);
@@ -182,6 +184,6 @@ impl Sha256 {
                 }
             }
         }
-        digest
+        Ok(digest)
     }
 }
