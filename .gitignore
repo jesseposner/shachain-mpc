@@ -12,3 +12,4 @@ target/
 wan/nodes.txt
 wg-pubkeys.txt
 **/wg-pubkeys.txt
+.DS_Store
