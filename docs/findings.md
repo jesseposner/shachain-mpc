@@ -175,5 +175,19 @@ from the seed alone. The architecture that the numbers support is Rep3 (or
 Shamir at t=3) background derivation feeding a lookahead buffer, pre-garbled
 BMR packages for channel open and quorum changes, local point export with
 replicated cross-checks, and a to-be-designed authorization layer gating
-release. The counterparty sees a standard Lightning endpoint throughout, and
-LDK, unmodified, agrees.
+release. The counterparty sees a standard Lightning endpoint in every
+message, and LDK, unmodified, agrees.
+
+Timing is the qualification on that last sentence. The counterparty
+controls how fast revocations are demanded, and one that outruns the
+refill rate for minutes can force a stall whose shape, a buffer's worth of
+full speed and then a frozen refill wait, marks the endpoint as unusual.
+That is a liveness and fingerprinting cost, not a fund-safety one, and
+deeper, pipelined buffers shrink it; docs/batching.md carries the drain
+arithmetic.
+
+The architecture has since been implemented natively in Rust
+([engine/](../engine/)): experimental and unreviewed, but measured at
+1.001 bits per AND per party with malicious security, sixteen times under
+the figures above, with the same unmodified-LDK verdict on its secrets and
+points.

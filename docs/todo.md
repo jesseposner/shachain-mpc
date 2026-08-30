@@ -139,7 +139,17 @@ Evaluating one package on two inputs leaks. `results/bmr-notes.md` records
 that the runtime was tested and "will happily run one" second evaluation.
 `poc/member.py:180` carries a comment and a delete; nothing enforces it.
 
-### 1.6 Share refresh
+### 1.6 The engine's reconstructed protocols are unreviewed
+
+`engine/src/dzkp.rs` (transcript verification at ~1 bit per AND) and
+`engine/src/convert.rs` (the mod-q masking behind point export) are
+reconstructions from their literature, not transcriptions, written and
+tested by their author alone. Both are flagged in `engine/README.md`;
+neither has had an adversarial read. The dZKP module is review priority
+one; the FLNW backend (`engine/src/mal.rs`) is the conservative default
+until that review happens.
+
+### 1.7 Share refresh
 
 Named exactly once in the entire repo (`README.md`, under "Not covered
 here") and tracked nowhere else. Quorum *change* is demonstrated (Act IV);
@@ -193,11 +203,16 @@ exposed" is asserted rather than audited.
 
 ### 3.1 Background derivation service with a lookahead buffer
 
+**PARTLY RESOLVED.** `engine/src/chain.rs` now implements the first
+block natively: level-batched expansion, the masked buffer, and the
+one-round release, LDK-verified. The steady state, a standing frontier,
+successive blocks, and pipelined refills, exists in neither
+implementation and is the engine's next milestone.
+
 The whole latency argument depends on it (`README.md`, "Why a revocation is
-one round"), and it does not
-exist. Related: garbling cannot serve the buffer, since a 48-edge package is
-~1.6 GB per party, so "steady-state derivation should stay on Rep3 in the
-background" (`results/bmr-notes.md`).
+one round"). Related: garbling cannot serve the buffer, since a 48-edge
+package is ~1.6 GB per party, so "steady-state derivation should stay on
+Rep3 in the background" (`results/bmr-notes.md`).
 
 ### 3.2 Package stockpiling as an operational system
 
@@ -246,6 +261,12 @@ mitigation for the denial path.
   buffer-sizing analysis exists.
 - **AWS `PendingVerification` retry** is calibrated to one observation
   ("cleared within minutes for us", `wan/README.md`) with no timeout policy.
+- **The engine's WAN figures are projections.** Rounds times 40 ms,
+  validated against exactly one cross-region MP-SPDZ measurement (64.3 s
+  projected against 65.5 s measured). No engine process has crossed a
+  real network, the batching tables have not been re-measured on it, and
+  the FLIOP prover's ~4 CPU-seconds per wide hash is assumed, not shown,
+  to hide inside WAN latency.
 
 ---
 

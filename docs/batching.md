@@ -147,7 +147,9 @@ Both of the parts that looked worth optimising are already noise. Refill is
 almost entirely SHA-256 depth, and the direct attack on that depth failed
 (see experiments/README.md). What remains is either carry-save adder trees
 inside the hash, or pre-garbling the subtree expansion the way channel open
-is already pre-garbled.
+is already pre-garbled. A third path has since been taken: the native
+engine keeps the depth but removes the width growth and cuts malicious
+traffic sixteenfold ([engine/README.md](../engine/README.md)).
 
 ## Sustained throughput per channel
 
@@ -177,6 +179,13 @@ the 4,096 one. But rounds grow from 1,635 at one lane to 6,766 at 2,048, so
 the measured figures are 12.6 and 19.9 minutes. The deepest buffer is the
 one the constant-round model flattered most.
 
+The growth is transport, not protocol. The native engine
+([engine/](../engine/)) sends one frame per tree level whatever the width
+and measures 1,607 rounds per hash at every lane count, so the same
+1,024-leaf refill is ~16,350 rounds, about 10.9 minutes at 40 ms, with a
+discount that grows with depth. That is a loopback measurement plus the
+round model, not a WAN figure.
+
 A revocation, not a payment: each commitment update reveals exactly one
 secret, and an isolated payment is two updates, one carrying
 `update_add_htlc` and one carrying `update_fulfill_htlc`. Halve the last
@@ -198,6 +207,16 @@ the second.
 
 None of this touches release latency, which is one round regardless: the
 buffer only has to stay ahead of consumption.
+
+Consumption, though, is the counterparty's to set. The protocol's only
+rate limit is BOLT #2's ordering, one unrevoked commitment outstanding, so
+the ceiling is one revocation per round trip through us, several per
+second, and update spam costs a peer nothing but bandwidth. Against the
+1,024 row's 1.35 refills per second, a flood empties the buffer in about
+five minutes, and the channel then moves in refill-sized bursts: minutes
+of full speed, minutes frozen. That cycle is also a fingerprint, taken up
+in docs/findings.md. Depth and pipelined refills are the sizing answer,
+and they should be sized to the drain ceiling, not to expected traffic.
 
 ## Scaling to many channels
 

@@ -85,6 +85,16 @@ is 18,870 sequential round trips and not arithmetic. Buffers do not amortise
 across channels, so a node with N channels runs N of them and pays N times
 the traffic. See [docs/batching.md](docs/batching.md).
 
+Staying ahead is not entirely our choice. The counterparty decides when a
+commitment update happens, and BOLT #2's ordering, at most one unrevoked
+commitment outstanding, is the only rate limit: one revocation per round
+trip through us, a few per second. Sustained faster than the refill rate,
+by a busy peer or a hostile one, a 1,024-deep buffer empties in minutes and
+the channel then advances in refill-sized bursts. Depth and refill
+pipelining have to be sized against that adversarial drain, not against
+average traffic; the throughput section of
+[docs/batching.md](docs/batching.md) works the numbers.
+
 ## Recovery costs nothing
 
 A prepared secret was originally hidden by one mask per online member, a
@@ -94,6 +104,28 @@ continents with the channel frozen throughout. Prepared values are now
 hidden under a replicated sharing, derived rather than stored, so any quorum
 can reconstruct them and a member can drop out with no effect at all. See
 [docs/buffer-storage.md](docs/buffer-storage.md).
+
+## The same engine, hand-rolled in Rust
+
+[engine/](engine/) reimplements this computation natively: replicated
+3-party evaluation of the same Bristol Fashion SHA-256, the block
+expansion, the masked buffer, the one-round release, and point export, in
+a few thousand lines of commented Rust with no framework underneath. Its
+malicious layer measures 9.0 bits per AND per party under triple
+sacrifice and 1.001 bits under distributed zero-knowledge verification,
+against the ~16 measured here under `mal-rep-bin`: a hash costs 2.83 KB
+per party instead of ~44 KB, and the conversion behind point export drops
+from ~92 KB per leaf to a few hundred bytes. Rounds match this
+repository's measurements exactly where they should (1,607 per hash, the
+circuit's AND depth) and stay flat as lanes widen, where MP-SPDZ's grow.
+It runs as three processes over TCP, and an unmodified rust-lightning
+accepts its secrets and points end to end.
+
+Its wide-area numbers are still projections, rounds times the 40 ms this
+repository measured, not cross-region measurements of its own; and the
+code is experimental and unreviewed, two of its constructions being
+reconstructions awaiting adversarial review, as its README says loudly.
+The measured tables above remain the MP-SPDZ system's.
 
 ## Key material comes from Iceberg
 
