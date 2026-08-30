@@ -143,6 +143,14 @@ pub trait PartyBackend {
         t: &mut PartyTape,
         net: &mut PartyNet,
     ) -> Result<(), String>;
+
+    /// Open shared words publicly. The malicious backend logs and
+    /// view-checks the opening; the semi-honest one just reconstructs.
+    fn open_words(
+        &mut self,
+        net: &mut PartyNet,
+        shares: &[(u64, u64)],
+    ) -> Result<Vec<u64>, String>;
 }
 
 /// One semi-honest party.
@@ -205,6 +213,16 @@ impl PartyBackend for SemiParty {
             }
         }
         Ok(())
+    }
+
+    fn open_words(
+        &mut self,
+        net: &mut PartyNet,
+        shares: &[(u64, u64)],
+    ) -> Result<Vec<u64>, String> {
+        let out: Vec<u64> = shares.iter().map(|s| s.1).collect();
+        let inb = net.reshare_prev(&out)?;
+        Ok(shares.iter().zip(&inb).map(|(s, &recv)| s.0 ^ s.1 ^ recv).collect())
     }
 }
 

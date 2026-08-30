@@ -235,6 +235,18 @@ impl PartyBackend for MalParty {
         self.party
     }
 
+    /// A public opening at a protocol boundary: logged, then immediately
+    /// view-checked, so the caller may act on the values.
+    fn open_words(
+        &mut self,
+        net: &mut PartyNet,
+        shares: &[(u64, u64)],
+    ) -> Result<Vec<u64>, String> {
+        let vals = self.open_batch(net, shares)?;
+        self.view_check(net)?;
+        Ok(vals)
+    }
+
     /// Beaver evaluation of one circuit: per level, one batched opening
     /// of d = x^a and e = y^b, then linear work; a views checkpoint at
     /// the end. Everything a cheater can do lands in an opening or a

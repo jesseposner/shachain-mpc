@@ -87,6 +87,22 @@ release is one round of plain messaging, the adapter comparing the
 duplicated copies and XORing them into the masked value, no MPC session
 at all. A wrong summand copy is caught by its honest co-holder.
 
+Point export (`src/convert.rs`) needs no arithmetic MPC. The leaf is
+also published masked additively mod q, t = (s + s_0 + s_1 + s_2) mod
+q, under summands with a domain tag of their own (mask paddings are
+never shared between the XOR and mod-q paths). Because each summand is
+known to exactly two parties who sit together on one replicated
+component, its Boolean sharing costs no communication, and t is one
+Boolean circuit built in code, three ripple additions and four
+conditional subtractions of q, ~3,600 ANDs and ~1,800 rounds evaluated
+once per block across every lane, then opened. Everything after that is
+public arithmetic: the per-commitment point is P = t*G minus the
+summand points, each published by its two holders and cross-checked,
+and the mod-q release is checked against P by the very equation the
+counterparty verifies. The construction identifies a secret with its
+class mod q, exact unless the 32-byte secret is >= q, the ~2^-128
+invalid-scalar branch the rest of this repository documents.
+
 ## Correctness
 
 - The five official BOLT #3 generation vectors, byte-for-byte through the
@@ -101,6 +117,13 @@ at all. A wrong summand copy is caught by its honest co-holder.
   hashing bug this repository found in MP-SPDZ
   (`upstream/mp-spdz-sha256-vectorised.md`) is the bug class these tests
   exist for.
+- Conversion suite (`tests/convert.rs`): the q-mask circuit against an
+  independent bigint reference, the deep-reduction corner forced; a
+  block converted under the malicious backend yields points equal to
+  `k256::SecretKey`-derived points for the plaintext secrets at every
+  index; the mod-q release recovers byte-identical secrets to the XOR
+  release and refuses a wrong summand copy, a wrong point copy, and a
+  tampered t.
 - Chain suite (`tests/chain.rs`, `tests/chain_wide.rs`): a block
   prepared under the malicious backend, released leaf by leaf through
   the masked one-round path, matches the plaintext walk at every index,

@@ -40,6 +40,27 @@ impl Circuit {
     }
 }
 
+/// Clear-text evaluation, for testing circuits (both parsed and built).
+pub fn eval_clear(c: &Circuit, inputs: &[Vec<bool>]) -> Vec<bool> {
+    assert_eq!(inputs.len(), c.inputs.len());
+    let mut wires = vec![false; c.n_wires];
+    let mut w = 0;
+    for (input, size) in inputs.iter().zip(&c.inputs) {
+        assert_eq!(input.len(), *size);
+        wires[w..w + size].copy_from_slice(input);
+        w += size;
+    }
+    for gate in &c.gates {
+        match *gate {
+            Gate::Xor(a, b, o) => wires[o as usize] = wires[a as usize] ^ wires[b as usize],
+            Gate::And(a, b, o) => wires[o as usize] = wires[a as usize] & wires[b as usize],
+            Gate::Inv(a, o) => wires[o as usize] = !wires[a as usize],
+        }
+    }
+    let out0 = c.output_offset(0);
+    wires[out0..out0 + c.outputs.iter().sum::<usize>()].to_vec()
+}
+
 fn parse(text: &str) -> Result<Circuit, String> {
     let mut lines = text.lines().filter(|l| !l.trim().is_empty());
     let mut next = |what: &str| lines.next().ok_or_else(|| format!("missing {what}"));

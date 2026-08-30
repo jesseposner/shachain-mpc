@@ -16,7 +16,7 @@ use rand_chacha::ChaCha12Rng;
 use rand_core::{RngCore, SeedableRng};
 use sha2::{Digest, Sha256 as RefSha256};
 
-use shachain_engine::engine::{PartyBackend, SemiParty};
+use shachain_engine::engine::SemiParty;
 use shachain_engine::mal::{MalParty, SecurityParams};
 use shachain_engine::net::tcp_ring;
 use shachain_engine::rep3::KeySet;

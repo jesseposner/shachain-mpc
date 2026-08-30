@@ -5,6 +5,7 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
+k256 = "0.14.0"
 rand_chacha = "0.3"
 rand_core = "0.6"
 sha2 = "0.10"

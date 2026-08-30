@@ -11,6 +11,7 @@
 
 pub mod bristol;
 pub mod chain;
+pub mod convert;
 pub mod engine;
 pub mod mal;
 pub mod net;
