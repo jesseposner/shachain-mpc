@@ -1,5 +1,15 @@
 # engine: the shachain in hand-rolled Rep3
 
+> **Warning: experimental, unreviewed cryptographic code. Do not use it
+> in production, and do not put funds behind it.** Nothing here has had
+> external security review. The protocol layers implement published
+> papers, but no one has checked this code against their proofs; the
+> mod-q masking in `src/convert.rs` is a bespoke construction that has
+> had no adversarial review at all; and the surrounding repository's
+> open items (authorization layer, key ceremonies, share refresh) apply
+> here in full. This code exists to measure and to be reviewed, not to
+> custody anything.
+
 A Rust implementation of the same computation the rest of this repository
 measures under MP-SPDZ: BOLT #3 per-commitment secrets derived inside
 honest-majority 3-party replicated MPC. MP-SPDZ stays the reference
