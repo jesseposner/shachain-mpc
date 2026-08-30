@@ -1,7 +1,8 @@
 //! The BOLT #3 walk on shared values.
 
-use crate::engine::Backend;
-use crate::sha256::{flip, Sha256, Shared256};
+use crate::engine::{Backend, PartyBackend};
+use crate::net::PartyNet;
+use crate::sha256::{flip, flip_party, PartyShared, Sha256, Shared256};
 
 /// BOLT #3 `generate_from_seed`: flip each set bit of `index` from bit 47
 /// down and hash. Every lane walks the same index; per-lane indices are
@@ -36,6 +37,23 @@ pub fn walk_edges(
     for i in 0..k {
         flip(&mut x, 47 - i, &all);
         x = sha.hash32(s, &x)?;
+    }
+    Ok(x)
+}
+
+/// The same walk, one party's side, for a standalone process.
+pub fn walk_edges_party(
+    sha: &Sha256,
+    be: &mut impl PartyBackend,
+    net: &mut PartyNet,
+    seed: &PartyShared,
+    k: usize,
+) -> Result<PartyShared, String> {
+    let all = vec![!0u64; seed.words];
+    let mut x = seed.clone();
+    for i in 0..k {
+        flip_party(be.party(), &mut x, 47 - i, &all);
+        x = sha.hash32_party(be, net, &x)?;
     }
     Ok(x)
 }

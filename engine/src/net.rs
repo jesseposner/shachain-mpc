@@ -10,7 +10,10 @@
 //! sender: bit n of everything the party ever puts on its wires, in send
 //! order, arrives flipped, while the party's own state stays consistent.
 
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{channel, Receiver, Sender};
+use std::time::{Duration, Instant};
 
 pub trait Wire: Send {
     fn send(&mut self, bytes: Vec<u8>) -> Result<(), String>;
@@ -30,6 +33,86 @@ impl Wire for ChannelWire {
     fn recv(&mut self) -> Result<Vec<u8>, String> {
         self.rx.recv().map_err(|_| "abort: peer is gone".to_string())
     }
+}
+
+/// Length-prefixed frames over one TCP stream, with all writes on a
+/// dedicated thread. The protocol's invariant is that sends never
+/// block: in a refill round every party sends a multi-megabyte batch to
+/// its previous neighbor before anyone reads, and blocking writes
+/// deadlock the ring the moment the socket buffers fill (found the hard
+/// way; the unbounded in-process channels could never show it).
+/// TCP_NODELAY is set at connect time: rounds are exactly the small,
+/// latency-critical writes Nagle's algorithm would sit on.
+pub struct TcpWire {
+    tx: Sender<Vec<u8>>,
+    reader: TcpStream,
+}
+
+impl TcpWire {
+    fn new(stream: TcpStream) -> Result<Self, String> {
+        let mut writer = stream.try_clone().map_err(|e| format!("clone: {e}"))?;
+        let (tx, rx) = channel::<Vec<u8>>();
+        std::thread::spawn(move || {
+            // Exits when the sender drops (wire dropped: abort or done)
+            // or the peer is gone; either way the stream clone closes.
+            while let Ok(bytes) = rx.recv() {
+                let len = (bytes.len() as u32).to_le_bytes();
+                if writer.write_all(&len).and_then(|()| writer.write_all(&bytes)).is_err() {
+                    break;
+                }
+            }
+        });
+        Ok(TcpWire { tx, reader: stream })
+    }
+}
+
+impl Wire for TcpWire {
+    fn send(&mut self, bytes: Vec<u8>) -> Result<(), String> {
+        self.tx.send(bytes).map_err(|_| "abort: peer is gone".to_string())
+    }
+
+    fn recv(&mut self) -> Result<Vec<u8>, String> {
+        let mut len = [0u8; 4];
+        self.reader.read_exact(&mut len).map_err(|e| format!("abort: wire: {e}"))?;
+        let n = u32::from_le_bytes(len) as usize;
+        if n > 1 << 30 {
+            return Err("abort: framing".into());
+        }
+        let mut bytes = vec![0u8; n];
+        self.reader.read_exact(&mut bytes).map_err(|e| format!("abort: wire: {e}"))?;
+        Ok(bytes)
+    }
+}
+
+/// Join the ring as one party over TCP: bind our own address, dial the
+/// next party, accept the previous one. Binding before dialing means
+/// start order does not matter; the dial retries while peers come up.
+pub fn tcp_ring(party: usize, addrs: &[String; 3]) -> Result<PartyNet, String> {
+    let listener = TcpListener::bind(&addrs[party])
+        .map_err(|e| format!("bind {}: {e}", addrs[party]))?;
+    let next_addr = &addrs[(party + 1) % 3];
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let next = loop {
+        match TcpStream::connect(next_addr) {
+            Ok(s) => break s,
+            Err(e) if Instant::now() < deadline => {
+                let _ = e;
+                std::thread::sleep(Duration::from_millis(25));
+            }
+            Err(e) => return Err(format!("connect {next_addr}: {e}")),
+        }
+    };
+    let (prev, _) = listener.accept().map_err(|e| format!("accept: {e}"))?;
+    for s in [&next, &prev] {
+        s.set_nodelay(true).map_err(|e| format!("nodelay: {e}"))?;
+    }
+    Ok(PartyNet {
+        prev: Box::new(TcpWire::new(prev)?),
+        next: Box::new(TcpWire::new(next)?),
+        sent_bytes: 0,
+        rounds: 0,
+        cheat_bit: None,
+    })
 }
 
 /// One party's endpoints plus its traffic accounting. A round, for the
@@ -82,6 +165,16 @@ impl PartyNet {
             return Err("abort: framing".into());
         }
         Ok(inb)
+    }
+
+    /// One-off directed send/recv, for handing final share components to
+    /// a designated party (output reconstruction). Not a counted round.
+    pub fn send_raw(&mut self, to_prev: bool, words: &[u64]) -> Result<(), String> {
+        self.send(to_prev, words)
+    }
+
+    pub fn recv_raw(&mut self, from_next: bool) -> Result<Vec<u64>, String> {
+        self.recv(from_next)
     }
 
     /// Send the same message both ways and collect both neighbors'.

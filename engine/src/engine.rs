@@ -132,48 +132,80 @@ pub fn local_gate(party: usize, gate: Gate, t: &mut PartyTape) {
     }
 }
 
-/// Semi-honest evaluation, one party's side: per level, compute the
-/// randomized local products, reshare toward the previous party, and
-/// take the next party's batch as the second components.
-fn eval_semi_party(
+/// One party's side of a protocol: the interface a standalone process
+/// runs, and the same code the in-process sessions thread together.
+pub trait PartyBackend {
+    fn party(&self) -> usize;
+    fn eval_circuit(
+        &mut self,
+        c: &Circuit,
+        s: &Schedule,
+        t: &mut PartyTape,
+        net: &mut PartyNet,
+    ) -> Result<(), String>;
+}
+
+/// One semi-honest party.
+pub struct SemiParty {
     party: usize,
-    zero: &mut ZeroShare,
-    c: &Circuit,
-    s: &Schedule,
-    t: &mut PartyTape,
-    net: &mut PartyNet,
-) -> Result<(), String> {
-    let words = t.words;
-    for phase in 0..=s.depth {
-        for &gi in &s.locals[phase] {
-            local_gate(party, c.gates[gi], t);
-        }
-        let ands = &s.ands[phase];
-        if ands.is_empty() {
-            continue;
-        }
-        let mut out = Vec::with_capacity(ands.len() * words);
-        for &gi in ands {
-            let Gate::And(x, y, o) = c.gates[gi] else { unreachable!() };
-            let (xw, yw, ow) = (x as usize * words, y as usize * words, o as usize * words);
-            for w in 0..words {
-                let (xi, xj) = (t.c[0][xw + w], t.c[1][xw + w]);
-                let (yi, yj) = (t.c[0][yw + w], t.c[1][yw + w]);
-                let r = (xi & yi) ^ (xi & yj) ^ (xj & yi) ^ zero.next();
-                t.c[0][ow + w] = r;
-                out.push(r);
-            }
-        }
-        let inb = net.reshare_prev(&out)?;
-        for (k, &gi) in ands.iter().enumerate() {
-            let Gate::And(_, _, o) = c.gates[gi] else { unreachable!() };
-            let ow = o as usize * words;
-            for w in 0..words {
-                t.c[1][ow + w] = inb[k * words + w];
-            }
-        }
+    zero: ZeroShare,
+}
+
+impl SemiParty {
+    pub fn new(party: usize, keys: &crate::rep3::PartyKeys) -> Self {
+        SemiParty { party, zero: ZeroShare::new(keys) }
     }
-    Ok(())
+}
+
+impl PartyBackend for SemiParty {
+    fn party(&self) -> usize {
+        self.party
+    }
+
+    /// Per level, compute the randomized local products, reshare toward
+    /// the previous party, and take the next party's batch as the
+    /// second components.
+    fn eval_circuit(
+        &mut self,
+        c: &Circuit,
+        s: &Schedule,
+        t: &mut PartyTape,
+        net: &mut PartyNet,
+    ) -> Result<(), String> {
+        let (party, zero) = (self.party, &mut self.zero);
+        let words = t.words;
+        for phase in 0..=s.depth {
+            for &gi in &s.locals[phase] {
+                local_gate(party, c.gates[gi], t);
+            }
+            let ands = &s.ands[phase];
+            if ands.is_empty() {
+                continue;
+            }
+            let mut out = Vec::with_capacity(ands.len() * words);
+            for &gi in ands {
+                let Gate::And(x, y, o) = c.gates[gi] else { unreachable!() };
+                let (xw, yw, ow) =
+                    (x as usize * words, y as usize * words, o as usize * words);
+                for w in 0..words {
+                    let (xi, xj) = (t.c[0][xw + w], t.c[1][xw + w]);
+                    let (yi, yj) = (t.c[0][yw + w], t.c[1][yw + w]);
+                    let r = (xi & yi) ^ (xi & yj) ^ (xj & yi) ^ zero.next();
+                    t.c[0][ow + w] = r;
+                    out.push(r);
+                }
+            }
+            let inb = net.reshare_prev(&out)?;
+            for (k, &gi) in ands.iter().enumerate() {
+                let Gate::And(_, _, o) = c.gates[gi] else { unreachable!() };
+                let ow = o as usize * words;
+                for w in 0..words {
+                    t.c[1][ow + w] = inb[k * words + w];
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 /// A circuit evaluation backend over per-party tapes. `Session` is the
@@ -191,19 +223,19 @@ pub trait Backend {
 /// Three semi-honest parties on in-process wires, one thread each.
 pub struct Session {
     words: usize,
-    zeros: Option<[ZeroShare; 3]>,
+    parties: Option<[SemiParty; 3]>,
     pub sent_bytes: [u64; 3],
     pub rounds: u64,
 }
 
 impl Session {
     pub fn new(keys: &KeySet, words: usize) -> Self {
-        let zeros = [
-            ZeroShare::new(&keys.party(0)),
-            ZeroShare::new(&keys.party(1)),
-            ZeroShare::new(&keys.party(2)),
+        let parties = [
+            SemiParty::new(0, &keys.party(0)),
+            SemiParty::new(1, &keys.party(1)),
+            SemiParty::new(2, &keys.party(2)),
         ];
-        Session { words, zeros: Some(zeros), sent_bytes: [0; 3], rounds: 0 }
+        Session { words, parties: Some(parties), sent_bytes: [0; 3], rounds: 0 }
     }
 }
 
@@ -252,15 +284,15 @@ impl Backend for Session {
         sched: &Schedule,
         tapes: &mut [PartyTape; 3],
     ) -> Result<(), String> {
-        let mut zeros = self.zeros.take().expect("session state present");
-        let [z0, z1, z2] = &mut zeros;
+        let mut parties = self.parties.take().expect("session state present");
+        let [p0, p1, p2] = &mut parties;
         let [t0, t1, t2] = tapes;
-        let mut states = [(z0, t0), (z1, t1), (z2, t2)];
+        let mut states = [(p0, t0), (p1, t1), (p2, t2)];
         // Split the borrow: run_parties needs one mutable state per party.
-        let result = run_parties(&mut states, None, |party, (zero, tape), net| {
-            eval_semi_party(party, zero, circuit, sched, tape, net)
+        let result = run_parties(&mut states, None, |_, (party, tape), net| {
+            party.eval_circuit(circuit, sched, tape, net)
         });
-        self.zeros = Some(zeros);
+        self.parties = Some(parties);
         let (sent, rounds) = result?;
         for p in 0..3 {
             self.sent_bytes[p] += sent[p];

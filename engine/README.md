@@ -33,13 +33,17 @@ The second rung is distributed zero-knowledge verification
 (Boyle-Gilboa-Ishai-Nof, CCS 2019/Asiacrypt 2020; eprint 2023/909 is the
 implementation guide) at ~1 bit per AND, behind the same trait.
 
-The three parties run as separate threads over real message channels,
-each holding only its own two PRF keys and its two wires; a party that
-aborts drops its wires and the abort cascades. A TCP transport behind
-the same `Wire` trait is what remains between this and three processes.
-Evaluation is scheduled by AND depth, one batched message round per
-level, which makes round count, the quantity a wide-area deployment
-actually pays for, a measured property:
+The three parties run separated for real: as threads over in-process
+channels for the test suites, and as three processes over TCP
+(`src/bin/party.rs`), behind one `Wire` trait. Each party holds only its
+own two PRF keys and its two wires; a party that aborts drops its wires
+and the abort cascades through the ring. TCP writes run on a dedicated
+thread per wire, preserving the protocol's sends-never-block invariant:
+blocking writes deadlock the ring the moment a refill's multi-megabyte
+batches fill the socket buffers, a failure the unbounded in-process
+channels could never exhibit. Evaluation is scheduled by AND depth, one
+batched message round per level, which makes round count, the quantity a
+wide-area deployment actually pays for, a measured property:
 
 | | bits/AND/lane | per hash per party | rounds per hash |
 |---|---:|---:|---:|
@@ -55,6 +59,16 @@ batch minimum forces 16% oversupply measures 10.1. Throughput is beside
 the point (56,000 semi-honest and 4,700 malicious hash-lanes/s on three
 threads; derivation is network-bound in deployment), but it confirms
 compute is nowhere near the constraint.
+
+Three processes over TCP loopback, digests verified against the
+plaintext walk by a checked reconstruction at party 0: the 48-edge
+cold-start walk at 1,024 lanes runs 77,136 rounds in 1.62 s (21 us per
+round including all compute), and a sigma-40 malicious walk completes
+with the same round counts as the in-process runs. At this repository's
+measured 40 ms per WAN round, 1,607 rounds projects one edge at 64.3 s;
+the cross-region measurement of the same circuit under MP-SPDZ was
+65.5 s (`results/`), so the engine's WAN model agrees with the only WAN
+data that exists to two percent.
 
 ## Correctness
 
@@ -88,6 +102,10 @@ the Bristol/KU Leuven license, and this crate is MIT.
 
 ```sh
 cargo test                              # example + property suites
-cargo run --release --bin bench -- 10 1024       # K edges, N lanes
+cargo run --release --bin bench -- 10 1024       # K edges, N lanes, in-process
 cargo run --release --bin bench -- 10 256 mal    # malicious, sigma 40
+
+# Three real processes; run one per machine (or terminal) with the same
+# addresses: party <id> <addr0> <addr1> <addr2> <K> <N> [mal [sigma]]
+cargo run --release --bin party -- 0 h0:9700 h1:9700 h2:9700 48 1024
 ```

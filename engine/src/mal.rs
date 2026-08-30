@@ -28,7 +28,7 @@ use rand_core::{RngCore, SeedableRng};
 use sha2::{Digest, Sha256 as HashFn};
 
 use crate::bristol::{Circuit, Gate};
-use crate::engine::{local_gate, run_parties, Backend, PartyTape, Schedule};
+use crate::engine::{local_gate, run_parties, Backend, PartyBackend, PartyTape, Schedule};
 use crate::net::PartyNet;
 use crate::rep3::{KeySet, PairRand, PartyKeys, ZeroShare};
 
@@ -66,17 +66,19 @@ struct PTriple {
 /// One party's whole malicious state: keys, streams, verified triples,
 /// and the log of every public value it has seen since the last
 /// checkpoint.
-struct MalParty {
+pub struct MalParty {
     party: usize,
     zero: ZeroShare,
     rand: PairRand,
     coin: PairRand,
     pool: Vec<PTriple>,
     log: Vec<u64>,
+    params: SecurityParams,
 }
 
 impl MalParty {
-    fn new(party: usize, keys: &PartyKeys) -> Self {
+    pub fn new(party: usize, keys: &PartyKeys, params: SecurityParams) -> Self {
+        assert!(params.bucket >= 2, "bucket size must be at least 2");
         MalParty {
             party,
             zero: ZeroShare::new(keys),
@@ -84,7 +86,13 @@ impl MalParty {
             coin: PairRand::new(keys, 2),
             pool: Vec::new(),
             log: Vec::new(),
+            params,
         }
+    }
+
+    /// Verified triples currently in stock (words of 64 lanes each).
+    pub fn stock(&self) -> usize {
+        self.pool.len()
     }
 
     /// Open a batch: send second components to the previous party (whose
@@ -142,7 +150,8 @@ impl MalParty {
     /// Generate, cut, shuffle, bucket, sacrifice: `target` verified
     /// triples in, `target * bucket + opened` generated. Six rounds
     /// regardless of size.
-    fn refill(&mut self, net: &mut PartyNet, target: usize, params: &SecurityParams) -> Result<(), String> {
+    fn refill(&mut self, net: &mut PartyNet, target: usize) -> Result<(), String> {
+        let params = self.params;
         let gen = target * params.bucket + params.opened;
         let mut trips = Vec::with_capacity(gen);
         let mut out = Vec::with_capacity(gen);
@@ -212,24 +221,33 @@ impl MalParty {
         Ok(())
     }
 
+    fn ensure(&mut self, net: &mut PartyNet, need: usize) -> Result<(), String> {
+        while self.pool.len() < need {
+            let deficit = need - self.pool.len();
+            self.refill(net, deficit.max(self.params.min_batch()))?;
+        }
+        Ok(())
+    }
+}
+
+impl PartyBackend for MalParty {
+    fn party(&self) -> usize {
+        self.party
+    }
+
     /// Beaver evaluation of one circuit: per level, one batched opening
     /// of d = x^a and e = y^b, then linear work; a views checkpoint at
     /// the end. Everything a cheater can do lands in an opening or a
     /// hash, and both are compared.
     fn eval_circuit(
         &mut self,
-        net: &mut PartyNet,
         c: &Circuit,
         s: &Schedule,
         t: &mut PartyTape,
-        params: &SecurityParams,
+        net: &mut PartyNet,
     ) -> Result<(), String> {
         let words = t.words;
-        let need = c.n_and * words;
-        while self.pool.len() < need {
-            let deficit = need - self.pool.len();
-            self.refill(net, deficit.max(params.min_batch()), params)?;
-        }
+        self.ensure(net, c.n_and * words)?;
         for phase in 0..=s.depth {
             for &gi in &s.locals[phase] {
                 local_gate(self.party, c.gates[gi], t);
@@ -285,11 +303,10 @@ pub struct MalSession {
 
 impl MalSession {
     pub fn new(keys: &KeySet, words: usize, params: SecurityParams) -> Self {
-        assert!(params.bucket >= 2, "bucket size must be at least 2");
         let parties = [
-            MalParty::new(0, &keys.party(0)),
-            MalParty::new(1, &keys.party(1)),
-            MalParty::new(2, &keys.party(2)),
+            MalParty::new(0, &keys.party(0), params),
+            MalParty::new(1, &keys.party(1), params),
+            MalParty::new(2, &keys.party(2), params),
         ];
         MalSession {
             words,
@@ -303,7 +320,7 @@ impl MalSession {
 
     /// Verified triples currently in stock (words of 64 lanes each).
     pub fn stock(&self) -> usize {
-        self.parties.as_ref().expect("state present")[0].pool.len()
+        self.parties.as_ref().expect("state present")[0].stock()
     }
 }
 
@@ -322,9 +339,8 @@ impl Backend for MalSession {
         let [p0, p1, p2] = &mut parties;
         let [t0, t1, t2] = tapes;
         let mut states = [(p0, t0), (p1, t1), (p2, t2)];
-        let params = self.params;
         let result = run_parties(&mut states, self.cheat_bit, |_, (mp, tape), net| {
-            mp.eval_circuit(net, circuit, sched, tape, &params)
+            mp.eval_circuit(circuit, sched, tape, net)
         });
         self.parties = Some(parties);
         let (sent, rounds) = result?;

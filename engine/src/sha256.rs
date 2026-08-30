@@ -17,7 +17,8 @@ use std::path::PathBuf;
 use rand_core::RngCore;
 
 use crate::bristol::Circuit;
-use crate::engine::{Backend, PartyTape, Schedule};
+use crate::engine::{Backend, PartyBackend, PartyTape, Schedule};
+use crate::net::PartyNet;
 use crate::rep3::{reconstruct_word, share_word};
 
 pub const IV: [u8; 32] = [
@@ -38,6 +39,31 @@ impl Shared256 {
     pub fn zero(words: usize) -> Self {
         let blank = || [vec![0u64; 256 * words], vec![0u64; 256 * words]];
         Shared256 { words, c: [blank(), blank(), blank()] }
+    }
+
+    /// One party's two components, the view a standalone process holds.
+    pub fn party(&self, p: usize) -> PartyShared {
+        PartyShared { words: self.words, c: [self.c[p][0].clone(), self.c[p][1].clone()] }
+    }
+}
+
+/// One party's components of a shared 32-byte value, BOLT bit order.
+#[derive(Clone)]
+pub struct PartyShared {
+    pub words: usize,
+    pub c: [Vec<u64>; 2],
+}
+
+/// BOLT #3 flip, one party's side: the public 1 lands in component x0,
+/// which parties 0 and 2 hold.
+pub fn flip_party(party: usize, x: &mut PartyShared, b: usize, mask: &[u64]) {
+    for w in 0..x.words {
+        if party == 0 {
+            x.c[0][b * x.words + w] ^= mask[w];
+        }
+        if party == 2 {
+            x.c[1][b * x.words + w] ^= mask[w];
+        }
     }
 }
 
@@ -124,18 +150,12 @@ impl Sha256 {
     /// Padding and IV are public; the message shares are the only secret
     /// input, so an edge costs exactly the circuit's 22,573 ANDs. Under
     /// a malicious backend, Err is an abort.
-    pub fn hash32(&self, s: &mut impl Backend, msg: &Shared256) -> Result<Shared256, String> {
-        assert_eq!(s.words(), msg.words);
+    /// Build one party's input tape: the shared message on the block
+    /// wires, plus the public padding and IV. Padding for a 256-bit
+    /// message is 0x80, zeros, then the bit length 256 big-endian.
+    pub fn build_tape(&self, party: usize, msg: &PartyShared) -> PartyTape {
         let words = msg.words;
-        let mut tapes = [
-            PartyTape::new(self.circuit.n_wires, words),
-            PartyTape::new(self.circuit.n_wires, words),
-            PartyTape::new(self.circuit.n_wires, words),
-        ];
-
-        // Input 0: the padded block. Message bytes 0..32 come from the
-        // shares; bytes 32..64 are the fixed padding for a 256-bit
-        // message: 0x80, zeros, then the bit length 256 big-endian.
+        let mut tape = PartyTape::new(self.circuit.n_wires, words);
         let mut pad = [0u8; 64];
         pad[32] = 0x80;
         pad[62] = 0x01;
@@ -145,53 +165,77 @@ impl Sha256 {
                 let wire = block0 + 8 * (63 - k) + bit;
                 if k < 32 {
                     let m = 8 * k + bit;
-                    for (p, tape) in tapes.iter_mut().enumerate() {
-                        for comp in 0..2 {
-                            tape.c[comp][wire * words..(wire + 1) * words]
-                                .copy_from_slice(&msg.c[p][comp][m * words..(m + 1) * words]);
-                        }
+                    for comp in 0..2 {
+                        tape.c[comp][wire * words..(wire + 1) * words]
+                            .copy_from_slice(&msg.c[comp][m * words..(m + 1) * words]);
                     }
                 } else {
                     let v = if (pad[k] >> bit) & 1 == 1 { !0u64 } else { 0 };
-                    for (p, tape) in tapes.iter_mut().enumerate() {
-                        for w in 0..words {
-                            tape.set_public(p, wire, w, v);
-                        }
+                    for w in 0..words {
+                        tape.set_public(party, wire, w, v);
                     }
                 }
             }
         }
-
-        // Input 1: the IV, public.
         let state0 = self.circuit.input_offset(1);
         for k in 0..32 {
             for bit in 0..8 {
                 let wire = state0 + 8 * (31 - k) + bit;
                 let v = if (IV[k] >> bit) & 1 == 1 { !0u64 } else { 0 };
-                for (p, tape) in tapes.iter_mut().enumerate() {
-                    for w in 0..words {
-                        tape.set_public(p, wire, w, v);
-                    }
+                for w in 0..words {
+                    tape.set_public(party, wire, w, v);
                 }
             }
         }
+        tape
+    }
 
-        s.eval(&self.circuit, &self.sched, &mut tapes)?;
-
+    /// Pull the digest wires back out of a tape, into BOLT bit order.
+    pub fn extract(&self, tape: &PartyTape) -> PartyShared {
+        let words = tape.words;
         let out0 = self.circuit.output_offset(0);
-        let mut digest = Shared256::zero(words);
+        let mut digest =
+            PartyShared { words, c: [vec![0u64; 256 * words], vec![0u64; 256 * words]] };
         for k in 0..32 {
             for bit in 0..8 {
                 let wire = out0 + 8 * (31 - k) + bit;
                 let m = 8 * k + bit;
-                for (p, tape) in tapes.iter().enumerate() {
-                    for comp in 0..2 {
-                        digest.c[p][comp][m * words..(m + 1) * words]
-                            .copy_from_slice(&tape.c[comp][wire * words..(wire + 1) * words]);
-                    }
+                for comp in 0..2 {
+                    digest.c[comp][m * words..(m + 1) * words]
+                        .copy_from_slice(&tape.c[comp][wire * words..(wire + 1) * words]);
                 }
             }
         }
+        digest
+    }
+
+    pub fn hash32(&self, s: &mut impl Backend, msg: &Shared256) -> Result<Shared256, String> {
+        assert_eq!(s.words(), msg.words);
+        let words = msg.words;
+        let mut tapes = [
+            self.build_tape(0, &msg.party(0)),
+            self.build_tape(1, &msg.party(1)),
+            self.build_tape(2, &msg.party(2)),
+        ];
+        s.eval(&self.circuit, &self.sched, &mut tapes)?;
+        let mut digest = Shared256::zero(words);
+        for (p, tape) in tapes.iter().enumerate() {
+            let part = self.extract(tape);
+            digest.c[p] = part.c;
+        }
         Ok(digest)
+    }
+
+    /// One party's side of a hash, for a standalone process on real
+    /// wires.
+    pub fn hash32_party(
+        &self,
+        be: &mut impl PartyBackend,
+        net: &mut PartyNet,
+        msg: &PartyShared,
+    ) -> Result<PartyShared, String> {
+        let mut tape = self.build_tape(be.party(), msg);
+        be.eval_circuit(&self.circuit, &self.sched, &mut tape, net)?;
+        Ok(self.extract(&tape))
     }
 }
