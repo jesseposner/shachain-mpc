@@ -7,6 +7,7 @@ use std::time::Instant;
 use rand_chacha::ChaCha12Rng;
 use rand_core::{RngCore, SeedableRng};
 
+use shachain_engine::dzkp::DzkpSession;
 use shachain_engine::engine::Session;
 use shachain_engine::mal::{MalSession, SecurityParams};
 use shachain_engine::rep3::KeySet;
@@ -17,7 +18,9 @@ fn main() {
     let mut args = std::env::args().skip(1);
     let k: usize = args.next().map_or(10, |a| a.parse().expect("K"));
     let n: usize = args.next().map_or(64, |a| a.parse().expect("N"));
-    let malicious = args.next().as_deref() == Some("mal");
+    let mode = args.next().unwrap_or_default();
+    let malicious = mode == "mal";
+    let dzkp = mode == "dzkp";
 
     let sha = Sha256::load().expect("circuit");
     let keys = KeySet::from_seed([7u8; 32]);
@@ -39,6 +42,10 @@ fn main() {
             session.stock(),
             format!("malicious (FLNW, sigma {})", params.sigma),
         )
+    } else if dzkp {
+        let mut session = DzkpSession::new(&keys, shared.words);
+        walk_edges(&sha, &mut session, &shared, k).expect("honest run aborted");
+        (session.sent_bytes[0], session.rounds, 0, "malicious (dZKP)".into())
     } else {
         let mut session = Session::new(&keys, shared.words);
         walk_edges(&sha, &mut session, &shared, k).expect("semi-honest never aborts");

@@ -55,6 +55,13 @@ impl ZeroShare {
     pub fn next(&mut self) -> u64 {
         self.own.next_u64() ^ self.prev.next_u64()
     }
+
+    /// The two halves of the next zero-share word, (F_{k_{i-1}},
+    /// F_{k_i}). The dZKP transcript needs them separately: each half is
+    /// known to a different verifier.
+    pub fn next_halves(&mut self) -> (u64, u64) {
+        (self.prev.next_u64(), self.own.next_u64())
+    }
 }
 
 /// Party i's view of a random replicated sharing (PRSS): component r_j

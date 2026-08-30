@@ -4,8 +4,9 @@
 > in production, and do not put funds behind it.** Nothing here has had
 > external security review. The protocol layers implement published
 > papers, but no one has checked this code against their proofs; the
-> mod-q masking in `src/convert.rs` is a bespoke construction that has
-> had no adversarial review at all; and the surrounding repository's
+> mod-q masking in `src/convert.rs` and the transcript proof in
+> `src/dzkp.rs` are reconstructions with no adversarial review at all;
+> and the surrounding repository's
 > open items (authorization layer, key ceremonies, share refresh) apply
 > here in full. This code exists to measure and to be reviewed, not to
 > custody anything.
@@ -39,9 +40,25 @@ paper (bucket 3, minimum batch 2^20 for 2^-40); we skip its bucket-cache
 optimization, as does MP-SPDZ's `ps-rep-bin`, and pay ~9 bits per AND
 instead of the optimized 7.
 
-The second rung is distributed zero-knowledge verification
-(Boyle-Gilboa-Ishai-Nof, CCS 2019/Asiacrypt 2020; eprint 2023/909 is the
-implementation guide) at ~1 bit per AND, behind the same trait.
+The second rung is built (`src/dzkp.rs`): semi-honest evaluation plus a
+distributed zero-knowledge proof over the whole transcript, in the
+style of Boyle-Gilboa-Ishai-Nof (CCS 2019/Asiacrypt 2020),
+reconstructed from that line of work rather than transcribed, and
+therefore first in line for review; the FLNW rung stays the
+conservative default. The statement "this party's messages were
+correct" has a witness the two other parties jointly hold, so a
+random-lambda reduction turns the transcript into one inner product,
+verified by a recursive fully-linear IOP whose proof messages are
+additively split, whose challenges come from joint coins fixed after
+each prover message, and whose base case is grounded in values the
+honest verifiers compute from their own data. Soundness is ~2^-50 per
+verified batch (lambda collision plus degree over GF(2^64)); stated,
+not rounded. Verification runs inside `eval_circuit`, before anything
+derived from the circuit can be opened, and openings receive each
+missing component from both holders. The cost is ~28 rounds and 0.1%
+traffic per hash; the FLIOP prover spends real CPU (~4 s per
+1,024-lane hash, first-level block products, unoptimized), which
+disappears inside the ~65 s the same hash costs a WAN.
 
 The three parties run separated for real: as threads over in-process
 channels for the test suites, and as three processes over TCP
@@ -59,6 +76,7 @@ wide-area deployment actually pays for, a measured property:
 |---|---:|---:|---:|
 | semi-honest floor | 1.000 | 2.82 KB | 1,607 |
 | malicious, FLNW rung | 9.012 | 25.4 KB | 1,608.6 |
+| malicious, dZKP rung | 1.001 | 2.83 KB | 1,635 |
 | MP-SPDZ `mal-rep-bin`, measured in `results/` | ~16 | ~44 KB | ~1,635 |
 
 The malicious rounds figure amortizes a six-round verification per
@@ -127,6 +145,13 @@ invalid-scalar branch the rest of this repository documents.
   hashing bug this repository found in MP-SPDZ
   (`upstream/mp-spdz-sha256-vectorised.md`) is the bug class these tests
   exist for.
+- dZKP suite (`tests/dzkp.rs`): the dZKP backend against the sha2
+  oracle and the walk; traffic asserted between 1.0 and 1.1 bits per
+  AND; and the abort property over the corrupt party's entire outgoing
+  stream, evaluation messages, proof shares, residuals, coins, and
+  openings alike. Its abort guarantee is statistical (~2^-50), unlike
+  the FLNW rung's deterministic single-error catch; no test run will
+  see the difference, and the docs say which is which.
 - Conversion suite (`tests/convert.rs`): the q-mask circuit against an
   independent bigint reference, the deep-reduction corner forced; a
   block converted under the malicious backend yields points equal to
@@ -162,7 +187,8 @@ the Bristol/KU Leuven license, and this crate is MIT.
 ```sh
 cargo test                              # example + property suites
 cargo run --release --bin bench -- 10 1024       # K edges, N lanes, in-process
-cargo run --release --bin bench -- 10 256 mal    # malicious, sigma 40
+cargo run --release --bin bench -- 10 256 mal    # malicious, FLNW, sigma 40
+cargo run --release --bin bench -- 10 1024 dzkp  # malicious, dZKP, ~1 bit/AND
 
 # Three real processes; run one per machine (or terminal) with the same
 # addresses: party <id> <addr0> <addr1> <addr2> <K> <N> [mal [sigma]]

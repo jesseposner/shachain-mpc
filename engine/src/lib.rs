@@ -12,7 +12,9 @@
 pub mod bristol;
 pub mod chain;
 pub mod convert;
+pub mod dzkp;
 pub mod engine;
+pub mod gf64;
 pub mod mal;
 pub mod net;
 pub mod rep3;
