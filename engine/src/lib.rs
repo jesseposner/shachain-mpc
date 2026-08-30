@@ -10,6 +10,7 @@
 //! per AND gate per party; XOR, NOT and constants are local.
 
 pub mod bristol;
+pub mod chain;
 pub mod engine;
 pub mod mal;
 pub mod net;

@@ -70,6 +70,23 @@ the cross-region measurement of the same circuit under MP-SPDZ was
 65.5 s (`results/`), so the engine's WAN model agrees with the only WAN
 data that exists to two percent.
 
+## The chain engine
+
+`src/chain.rs` is the piece the rest exists for. A block is the subtree
+covering the next 2^h indices, expanded level by level: each level is
+one uniform vectorised hash whose lanes are the current frontier (the
+left child of a node is the node itself, costing nothing), so a block
+costs h hash rounds for 2^h - 1 secrets, and the walk from the seed to
+the first block root makes the whole cold start exactly 48 hashes.
+
+Prepared leaves are never reconstructed. Per `docs/buffer-storage.md`,
+each leaf is published as a masked value whose summands derive from
+long-term keys in the same replicated pattern as the shares: every
+summand has two holders, any quorum re-derives everything, and a
+release is one round of plain messaging, the adapter comparing the
+duplicated copies and XORing them into the masked value, no MPC session
+at all. A wrong summand copy is caught by its honest co-holder.
+
 ## Correctness
 
 - The five official BOLT #3 generation vectors, byte-for-byte through the
@@ -84,6 +101,15 @@ data that exists to two percent.
   hashing bug this repository found in MP-SPDZ
   (`upstream/mp-spdz-sha256-vectorised.md`) is the bug class these tests
   exist for.
+- Chain suite (`tests/chain.rs`, `tests/chain_wide.rs`): a block
+  prepared under the malicious backend, released leaf by leaf through
+  the masked one-round path, matches the plaintext walk at every index,
+  descending; the same at 128 leaves under the semi-honest backend,
+  crossing the lane-word boundary; a wrong summand copy is caught; and
+  the released sequence is fed to unmodified rust-lightning, which
+  accepts all of it, rejects every single-byte corruption, and
+  re-derives stored secrets (`ldk-check`, the same harness the MP-SPDZ
+  measurements answer to).
 - Malicious suite (`tests/malicious.rs`): the malicious backend computes
   the same function (oracle against `sha2` and the BOLT walk), its
   traffic lands where FLNW says, and, as a property over the whole
